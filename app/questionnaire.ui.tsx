@@ -20,10 +20,23 @@ export function WelcomeScreen() {
   return (
     <section className={styles.welcome}>
       <div className={styles.welcomeEmoji}>💜</div>
-      <h1>Welcome</h1>
+      <h1>Hai să ne cunoaștem!</h1>
+      <p>Bine ai venit! Sunt Daniela și vreau să te ajut să devii, cea mai bună versiune a ta. 💜</p>
+      <p>Hai să ne cunoaștem! 😊</p>
+      <p>Acest chestionar este dedicat femeilor ocupate care vor o schimbare reală — dar nu au timp de sală, de diete complicate sau de planuri care nu se potrivesc cu viața lor.</p>
+      <p>Surprize frumoase te așteaptă odată ce termini de completat! 🎁</p>
+      <p>Informațiile de aici mă vor ajuta să gândesc ceva special, conceput numai pentru tine. Fiecare întrebare are un scop — vei înțelege în curând. 😊</p>
+      <p>Cu cât ești mai sinceră și mai detaliată, cu atât surpriza va fi mai bună pentru tine.</p>
       <div className={styles.welcomeBadges}>
-        <span className={styles.wBadge}>5-6 min</span>
-        <span className={styles.wBadge}>Safe data</span>
+        <span className={styles.wBadge}>⏱ Durează aproximativ 5-6 minute</span>
+        <span className={styles.wBadge}>✅ Nu există răspunsuri greșite — doar răspunsuri sincere</span>
+        <span className={styles.wBadge}>🔒 Toate datele tale sunt 100% confidențiale</span>
+      </div>
+      <p>La final primești acces la grupul meu PRIVAT de WhatsApp, unde te așteaptă conținut gratuit valoros: ghiduri, sfaturi și multe surprize. 💚</p>
+      <p>Ia-ți câteva minute de liniște, un pahar cu apă și hai să începem! 😊</p>
+      <div className={styles.welcomeCreds}>
+        <strong>CYB — Daniela Cioclov</strong><br />
+        Tehnician Nutriționist | Fizioterapie &amp; Kinetoterapie | Instructor Fitness 10+ ani
       </div>
     </section>
   );
@@ -108,5 +121,5 @@ interface FooterProps {
 
 export function Footer({ show, canGoBack, isWelcome, isSubmitStep, onBack, onNext }: FooterProps) {
   if (!show) return null;
-  return <footer className={styles.footerNav}><button type="button" className={`${styles.navBtn} ${styles.btnBack}`} onClick={onBack} style={{ visibility: canGoBack ? "visible" : "hidden" }}>Back</button><span className={styles.enterHint}>Enter</span><button type="button" className={`${styles.navBtn} ${isSubmitStep ? styles.btnSubmit : styles.btnNext}`} onClick={onNext}>{isWelcome ? "Start" : isSubmitStep ? "Submit" : "Next"}</button></footer>;
+  return <footer className={styles.footerNav}><button type="button" className={`${styles.navBtn} ${styles.btnBack}`} onClick={onBack} style={{ visibility: canGoBack ? "visible" : "hidden" }}>Back</button><span className={styles.enterHint}>{isWelcome ? "Takes 5 minutes" : "Enter"}</span><button type="button" className={`${styles.navBtn} ${isSubmitStep ? styles.btnSubmit : styles.btnNext}`} onClick={onNext}>{isWelcome ? "Sunt gata! Să începem →" : isSubmitStep ? "Submit" : "Next"}</button></footer>;
 }
