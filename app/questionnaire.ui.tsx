@@ -46,14 +46,30 @@ export function EndScreen({ name }: { name: string }) {
   return (
     <section className={styles.endScreen}>
       <div className={styles.endEmoji}>🎉</div>
-      <h2>{name ? `Multumesc ${name}` : "Multumesc"}</h2>
-      <Link href="https://chat.whatsapp.com/DLDKG6cIXZ3EH0GtDbfK6Y" target="_blank" rel="noopener noreferrer" className={styles.whatsappBtn}>WhatsApp</Link>
+      <h2>{name ? `Gata! Mulțumesc frumos, ${name}! 💜` : "Gata! Mulțumesc frumos! 💜"}</h2>
+      <p>🎉 Gata! Am primit răspunsurile tale.</p>
+      <p>Mulțumesc că ți-ai făcut timp — fiecare răspuns contează mai mult decât crezi. 😉</p>
+      <p><strong>Ce primești ACUM:</strong></p>
+      <p>💚 Accesul tău la grupul PRIVAT de WhatsApp — doar pentru cele care au completat chestionarul, adică TU 🫵</p>
+      <Link href="https://chat.whatsapp.com/DLDKG6cIXZ3EH0GtDbfK6Y" target="_blank" rel="noopener noreferrer" className={styles.whatsappBtn}>👉 INTRĂ ÎN GRUPUL WHATSAPP</Link>
+      <div className={styles.endSub}>
+        <p>Acolo vei primi GRATUIT: ghiduri, planuri de antrenament, sfaturi de nutriție și mult conținut valoros.</p>
+        <p>📩 Dacă nu poți copia sau deschide link-ul, trimite-mi un mesaj și ți-l trimit imediat în privat.</p>
+      </div>
     </section>
   );
 }
 
 export function DeclinedScreen() {
-  return <section className={styles.declined}><h2>Declined</h2></section>;
+  return (
+    <section className={styles.declined}>
+      <div className={styles.endEmoji}>🤍</div>
+      <h2>Înțelegem.</h2>
+      <p>Din păcate, nu putem continua fără acordul tău pentru prelucrarea datelor.</p>
+      <p>Dacă te răzgândești, ești oricând binevenită! 💜</p>
+      <p>Poți completa din nou chestionarul oricând.</p>
+    </section>
+  );
 }
 
 interface QuestionBodyProps {
