@@ -104,6 +104,16 @@ export default function Questionnaire() {
       const payload = toSubmissionData(visibleQuestions, answers);
       console.log("CYB questionnaire payload", payload);
 
+      const questionsMeta = visibleQuestions
+        .filter((q) => q.num && q.title && q.block)
+        .map((q) => ({ id: q.id, title: q.title!, block: q.block! }));
+
+      fetch("/api/send-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ answers: payload, questions: questionsMeta }),
+      }).catch((err) => console.error("Email send failed:", err));
+
       const endIndex = visibleQuestions.findIndex((item) => item.id === "end");
       if (endIndex >= 0) setIndex(endIndex);
       return;
