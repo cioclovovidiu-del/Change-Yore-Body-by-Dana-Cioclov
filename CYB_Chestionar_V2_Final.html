@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Change Your Body — Chestionar de Evaluare</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --teal: #2AA5A0;
+  --teal-deep: #1A9E9E;
+  --teal-dark: #157575;
+  --teal-darker: #0E4F4F;
+  --teal-glow: #3ECDC6;
+  --teal-pale: #E8F6F5;
+  --gold: #C9A84C;
+  --gold-warm: #D4AF37;
+  --dark: #0F1923;
+  --dark2: #1A2733;
+  --text: #3D4F5F;
+  --text-light: #6B7F8E;
+  --white: #FFFFFF;
+  --rose: #E8A0BF;
+  --red: #E07A6A;
+  --green: #48BB78;
+  --serif: 'Cormorant Garamond', Georgia, serif;
+  --sans: 'Outfit', system-ui, sans-serif;
+}
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+html { height: 100%; -webkit-text-size-adjust: 100%; }
+
+body {
+  font-family: var(--sans);
+  color: var(--text);
+  background: var(--dark);
+  min-height: 100vh;
+  min-height: -webkit-fill-available;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ===== HEADER ===== */
+.header {
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(15,25,35,0.97);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(42,165,160,0.1);
+  z-index: 100;
+  flex-shrink: 0;
+  position: relative;
+}
+.logo {
+  font-family: var(--serif);
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--teal-glow);
+  white-space: nowrap;
+}
+.logo span { color: var(--gold); font-weight: 400; }
+.progress-info {
+  font-size: 0.72rem;
+  color: rgba(255,255,255,0.35);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.progress-bar-wrap {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 3px;
+  background: rgba(255,255,255,0.05);
+}
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--teal), var(--teal-glow));
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 0 2px 2px 0;
+  width: 0%;
+}
+
+/* ===== MAIN ===== */
+.main {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+/* ===== SLIDES ===== */
+.slide {
+  width: 100%;
+  max-width: 600px;
+  padding: 32px 24px 120px;
+  margin: 0 auto;
+  opacity: 0;
+  transform: translateY(30px);
+  transition: all 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  position: absolute;
+}
+.slide.active {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: all;
+  position: relative;
+}
+
+/* ===== WELCOME ===== */
+.welcome { text-align: center; padding-top: 10vh; }
+.welcome-emoji { font-size: 3rem; margin-bottom: 20px; animation: wave 2.5s ease-in-out infinite; }
+@keyframes wave {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(12deg); }
+  75% { transform: rotate(-6deg); }
+}
+.welcome h1 {
+  font-family: var(--serif);
+  font-size: 2.2rem;
+  color: white;
+  line-height: 1.2;
+  margin-bottom: 20px;
+  font-weight: 600;
+}
+.welcome h1 em { color: var(--teal-glow); font-style: italic; }
+.welcome p {
+  color: rgba(255,255,255,0.55);
+  font-size: 0.92rem;
+  line-height: 1.75;
+  margin-bottom: 12px;
+}
+.welcome-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin: 24px 0;
+}
+.w-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 14px; border-radius: 50px;
+  background: rgba(42,165,160,0.1);
+  border: 1px solid rgba(42,165,160,0.15);
+  color: rgba(255,255,255,0.6);
+  font-size: 0.78rem; font-weight: 500;
+}
+.welcome-creds {
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  font-size: 0.8rem;
+  color: rgba(255,255,255,0.3);
+  line-height: 1.6;
+}
+
+/* ===== QUESTION ===== */
+.q-card { width: 100%; }
+.q-block-tag {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 50px;
+  background: rgba(42,165,160,0.1);
+  color: var(--teal-glow);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+}
+.q-number {
+  font-family: var(--serif);
+  font-size: 0.9rem;
+  color: rgba(255,255,255,0.25);
+  margin-bottom: 6px;
+}
+.q-title {
+  font-family: var(--serif);
+  font-size: 1.45rem;
+  color: white;
+  line-height: 1.35;
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+.q-subtitle {
+  color: rgba(255,255,255,0.38);
+  font-size: 0.82rem;
+  margin-bottom: 24px;
+  font-style: italic;
+  line-height: 1.5;
+}
+.q-spacer { height: 20px; }
+
+/* ===== INPUTS ===== */
+.text-input, .email-input, .tel-input {
+  width: 100%;
+  padding: 14px 0;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid rgba(255,255,255,0.12);
+  color: white;
+  font-family: var(--sans);
+  font-size: 1.1rem;
+  outline: none;
+  transition: border-color 0.3s;
+}
+.text-input:focus, .email-input:focus, .tel-input:focus { border-bottom-color: var(--teal); }
+.text-input::placeholder, .email-input::placeholder, .tel-input::placeholder { color: rgba(255,255,255,0.2); }
+
+.number-input {
+  width: 140px;
+  padding: 14px 0;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid rgba(255,255,255,0.12);
+  color: white;
+  font-family: var(--sans);
+  font-size: 1.4rem;
+  font-weight: 600;
+  text-align: center;
+  outline: none;
+  transition: border-color 0.3s;
+  -moz-appearance: textfield;
+}
+.number-input::-webkit-outer-spin-button,
+.number-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+.number-input:focus { border-bottom-color: var(--teal); }
+
+.text-area {
+  width: 100%;
+  min-height: 90px;
+  padding: 14px 16px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px;
+  color: white;
+  font-family: var(--sans);
+  font-size: 0.92rem;
+  line-height: 1.6;
+  outline: none;
+  resize: vertical;
+  transition: border-color 0.3s;
+}
+.text-area:focus { border-color: var(--teal); }
+.text-area::placeholder { color: rgba(255,255,255,0.2); }
+
+/* Options (single select) */
+.options-list { width: 100%; display: flex; flex-direction: column; gap: 8px; }
+.option {
+  width: 100%;
+  padding: 14px 16px;
+  background: rgba(255,255,255,0.03);
+  border: 1.5px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  color: rgba(255,255,255,0.75);
+  font-family: var(--sans);
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  line-height: 1.4;
+}
+.option:active { transform: scale(0.985); }
+.option.selected {
+  background: rgba(42,165,160,0.14);
+  border-color: var(--teal);
+  color: white;
+}
+.option-letter {
+  width: 26px; height: 26px;
+  border-radius: 6px;
+  border: 1.5px solid rgba(255,255,255,0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 600;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+.option.selected .option-letter {
+  background: var(--teal);
+  border-color: var(--teal);
+  color: white;
+}
+
+/* Checkboxes */
+.checkbox-list { width: 100%; display: flex; flex-direction: column; gap: 7px; }
+.checkbox-item {
+  width: 100%;
+  padding: 13px 14px;
+  background: rgba(255,255,255,0.03);
+  border: 1.5px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  color: rgba(255,255,255,0.75);
+  font-family: var(--sans);
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  line-height: 1.4;
+}
+.checkbox-item:active { transform: scale(0.985); }
+.checkbox-item.checked {
+  background: rgba(42,165,160,0.12);
+  border-color: var(--teal);
+  color: white;
+}
+.check-box {
+  width: 22px; height: 22px;
+  border-radius: 6px;
+  border: 1.5px solid rgba(255,255,255,0.15);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s;
+  font-size: 0.65rem;
+}
+.checkbox-item.checked .check-box {
+  background: var(--teal);
+  border-color: var(--teal);
+}
+.checkbox-item.checked .check-box::after { content: '✓'; color: white; font-weight: 700; }
+
+/* Scale */
+.scale-wrap { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+.scale-btn {
+  width: 48px; height: 48px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.04);
+  border: 1.5px solid rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.5);
+  font-family: var(--sans);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex; align-items: center; justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+}
+.scale-btn:active { transform: scale(0.92); }
+.scale-btn.selected { background: var(--teal); border-color: var(--teal); color: white; }
+.scale-labels { display: flex; justify-content: space-between; width: 100%; margin-top: 10px; }
+.scale-labels span { font-size: 0.7rem; color: rgba(255,255,255,0.25); }
+
+/* GDPR */
+.gdpr-text {
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
+  padding: 18px;
+  margin-bottom: 18px;
+  font-size: 0.78rem;
+  color: rgba(255,255,255,0.4);
+  line-height: 1.8;
+}
+
+/* ===== FOOTER NAV ===== */
+.footer-nav {
+  padding: 12px 20px;
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(15,25,35,0.97);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid rgba(42,165,160,0.06);
+  flex-shrink: 0;
+  z-index: 100;
+  gap: 8px;
+}
+.nav-btn {
+  padding: 11px 24px;
+  border-radius: 50px;
+  border: none;
+  font-family: var(--sans);
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  -webkit-tap-highlight-color: transparent;
+  white-space: nowrap;
+}
+.nav-btn:disabled { opacity: 0.25; pointer-events: none; }
+.btn-back {
+  background: transparent;
+  color: rgba(255,255,255,0.4);
+  border: 1px solid rgba(255,255,255,0.08);
+  padding: 11px 18px;
+}
+.btn-back:active { background: rgba(255,255,255,0.04); }
+.btn-next {
+  background: linear-gradient(135deg, var(--teal) 0%, var(--teal-deep) 100%);
+  color: white;
+  box-shadow: 0 4px 16px rgba(42,165,160,0.25);
+}
+.btn-next:active { transform: scale(0.97); }
+.btn-submit {
+  background: linear-gradient(135deg, var(--gold) 0%, var(--gold-warm) 100%);
+  color: white;
+  box-shadow: 0 4px 16px rgba(201,168,76,0.25);
+  padding: 13px 28px;
+}
+.btn-submit:active { transform: scale(0.97); }
+.enter-hint { font-size: 0.68rem; color: rgba(255,255,255,0.18); flex-shrink: 0; }
+
+/* ===== END SCREENS ===== */
+.end-screen, .declined { text-align: center; padding-top: 8vh; }
+.end-emoji { font-size: 3.5rem; margin-bottom: 20px; }
+.end-screen h2, .declined h2 {
+  font-family: var(--serif);
+  font-size: 2rem;
+  color: white;
+  margin-bottom: 16px;
+  line-height: 1.25;
+}
+.end-screen h2 em { color: var(--teal-glow); font-style: italic; }
+.end-screen p, .declined p { color: rgba(255,255,255,0.55); font-size: 0.92rem; line-height: 1.7; margin-bottom: 12px; }
+.whatsapp-btn {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 16px 32px; border-radius: 14px;
+  background: #25D366; color: white;
+  font-family: var(--sans); font-size: 1rem; font-weight: 600;
+  text-decoration: none; margin-top: 24px;
+  box-shadow: 0 4px 20px rgba(37,211,102,0.3);
+  transition: all 0.3s;
+}
+.whatsapp-btn:active { transform: scale(0.97); }
+.end-sub {
+  margin-top: 20px; padding-top: 16px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  font-size: 0.8rem; color: rgba(255,255,255,0.3);
+}
+
+/* ===== VALIDATION ERROR ===== */
+.error-msg {
+  color: var(--red);
+  font-size: 0.8rem;
+  margin-top: 10px;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.error-msg.show { opacity: 1; }
+
+/* ===== ANIMATIONS ===== */
+@keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-5px)} 60%{transform:translateX(5px)} }
+
+/* ===== MOBILE RESPONSIVE ===== */
+@media (max-width: 480px) {
+  .header { padding: 12px 16px; }
+  .logo { font-size: 1.05rem; }
+  .slide { padding: 24px 18px 100px; }
+  .welcome { padding-top: 5vh; }
+  .welcome h1 { font-size: 1.75rem; }
+  .welcome p { font-size: 0.85rem; }
+  .q-title { font-size: 1.25rem; }
+  .q-subtitle { font-size: 0.78rem; }
+  .option { padding: 12px 14px; font-size: 0.85rem; gap: 10px; }
+  .option-letter { width: 24px; height: 24px; font-size: 0.65rem; }
+  .checkbox-item { padding: 11px 12px; font-size: 0.84rem; gap: 9px; }
+  .check-box { width: 20px; height: 20px; }
+  .scale-btn { width: 42px; height: 42px; font-size: 0.9rem; }
+  .text-input, .email-input, .tel-input { font-size: 1rem; }
+  .number-input { font-size: 1.2rem; width: 110px; }
+  .footer-nav { padding: 10px 16px; }
+  .nav-btn { padding: 10px 18px; font-size: 0.82rem; }
+  .btn-back { padding: 10px 14px; }
+  .end-screen h2, .declined h2 { font-size: 1.6rem; }
+  .whatsapp-btn { padding: 14px 24px; font-size: 0.9rem; }
+}
+
+@media (max-width: 360px) {
+  .slide { padding: 20px 14px 90px; }
+  .q-title { font-size: 1.15rem; }
+  .option { padding: 11px 12px; font-size: 0.82rem; }
+  .scale-btn { width: 36px; height: 36px; font-size: 0.85rem; }
+  .scale-wrap { gap: 4px; }
+}
+
+/* Landscape phone */
+@media (max-height: 500px) {
+  .welcome { padding-top: 2vh; }
+  .slide { padding-top: 16px; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">Dana Cioclov <span>· CYB</span></div>
+  <div class="progress-info" id="progressInfo"></div>
+  <div class="progress-bar-wrap"><div class="progress-bar" id="progressBar"></div></div>
+</div>
+
+<div class="main" id="main"></div>
+
+<div class="footer-nav" id="footerNav">
+  <button class="nav-btn btn-back" id="btnBack" onclick="goBack()">← Înapoi</button>
+  <span class="enter-hint" id="enterHint">Enter ↵</span>
+  <button class="nav-btn btn-next" id="btnNext" onclick="goNext()">Continuă →</button>
+</div>
+
+<script>
+// ===== QUESTIONNAIRE DATA — synced with Typeform live (40 questions) =====
+const Q = [
+  { id:'welcome', type:'welcome' },
+
+  // BLOC 1: DESPRE TINE
+  { id:'q1', type:'text', block:'Despre Tine', icon:'🌸', num:'1', title:'Cum te numești?', sub:'Prenumele tău (așa cum vrei să ți mă adresez)', ph:'Scrie prenumele tău...', req:true },
+  { id:'q2', type:'number', block:'Despre Tine', icon:'🌸', num:'2', title:'Câți ani ai?', sub:'Vârsta ta în ani', ph:'ex: 38', req:true },
+  { id:'q3', type:'number', block:'Despre Tine', icon:'🌸', num:'3', title:'Cât de înaltă ești? (cm)', sub:'Exemplu: 165', ph:'165', req:true },
+  { id:'q4', type:'number', block:'Despre Tine', icon:'🌸', num:'4', title:'Cât cântărești acum? (kg)', sub:'Greutatea ta actuală — fii sinceră, e doar pentru calcul', ph:'72', req:true },
+  { id:'q5', type:'single', block:'Despre Tine', icon:'🌸', num:'5', title:'Care este obiectivul tău principal?', sub:null, req:true,
+    opts:['Slăbire / pierdere în greutate','Tonifiere / dezvoltare masă musculară','Menținere greutate + stil de viață sănătos','Recuperare post-partum','Echilibrare hormonală (pre-menopauză / menopauză)'] },
+  { id:'q6', type:'single', block:'Despre Tine', icon:'🌸', num:'6', title:'În ce etapă de viață te afli?', sub:null, req:true,
+    opts:['Sub 35 de ani — ciclu menstrual regulat','35-45 ani — ciclu regulat','Pre-menopauză (cicluri neregulate, primele simptome)','Menopauză (fără menstruație de peste 12 luni)','Post-partum (0-12 luni după naștere)','Alăptez în prezent'] },
+
+  // RAMIFICARE: Pre-menopauză / Menopauză
+  { id:'q7', type:'multi', block:'Despre Tine', icon:'🌸', num:'7', title:'Ce simptome hormonale experimentezi cel mai des?', sub:'Bifează tot ce se aplică', req:true,
+    opts:['Bufeuri / valuri de căldură','Insomnie / somn agitat','Schimbări de dispoziție','Creștere în greutate (mai ales abdominal)','Oboseală cronică','Libido scăzut','Dureri articulare','Altele'],
+    showIf:{q:'q6',vals:[2,3]} },
+  { id:'q8', type:'single', block:'Despre Tine', icon:'🌸', num:'8', title:'Urmezi tratament hormonal substitutiv (HRT)?', sub:null, req:true,
+    opts:['Da, prescris de medic','Nu','Am urmat în trecut, dar am renunțat','Sunt în discuții cu medicul'],
+    showIf:{q:'q6',vals:[2,3]} },
+
+  // RAMIFICARE: Post-partum / Alăptez
+  { id:'q9', type:'number', block:'Despre Tine', icon:'🌸', num:'9', title:'Câte luni au trecut de la naștere?', sub:null, ph:'ex: 4', req:true,
+    showIf:{q:'q6',vals:[4,5]} },
+  { id:'q10', type:'single', block:'Despre Tine', icon:'🌸', num:'10', title:'Cum ai născut?', sub:null, req:true,
+    opts:['Natural','Cezariană'],
+    showIf:{q:'q6',vals:[4,5]} },
+  { id:'q11', type:'single', block:'Despre Tine', icon:'🌸', num:'11', title:'Alăptezi în prezent?', sub:null, req:true,
+    opts:['Da, exclusiv','Da, parțial (și formulă)','Nu'],
+    showIf:{q:'q6',vals:[4,5]} },
+  { id:'q12', type:'multi', block:'Despre Tine', icon:'🌸', num:'12', title:'Bifează ce se aplică:', sub:'Important pentru siguranța ta', req:true,
+    opts:['Am primit aviz medical să fac sport','Am diastază abdominală (confirmată sau suspectată)','Am incontinență urinară (pierderi la efort/tuse/râs)','Nimic din cele de mai sus'],
+    showIf:{q:'q6',vals:[4,5]} },
+
+  // BLOC 2: STILUL TĂU DE VIAȚĂ
+  { id:'q13', type:'single', block:'Stilul Tău de Viață', icon:'☀️', num:'13', title:'Cum ai dormit ÎN ULTIMA LUNĂ?', sub:null, req:true,
+    opts:['Bine (7-8h, somn odihnitor)','Ok, dar m-aș odihni mai bine','Prost (sub 6h sau treziri frecvente)','Foarte prost (insomnie / anxietate nocturnă)'] },
+  { id:'q14', type:'single', block:'Stilul Tău de Viață', icon:'☀️', num:'14', title:'Nivelul tău de stres zilnic?', sub:null, req:true,
+    opts:['Scăzut — viața e ok','Moderat — stres normal de zi cu zi','Ridicat — mă simt copleșită frecvent','Foarte ridicat — mă afectează fizic'] },
+  { id:'q15', type:'single', block:'Stilul Tău de Viață', icon:'☀️', num:'15', title:'Cum arată o zi obișnuită pentru tine?', sub:null, req:true,
+    opts:['Lucrez de acasă (remote / freelancer)','Lucrez la birou (8+ ore așezată)','Lucrez în picioare / mișcare (vânzătoare, asistentă etc.)','Sunt mamă cu program complet acasă','Lucrez ture','Program mixt / variabil'] },
+  { id:'q16', type:'single', block:'Stilul Tău de Viață', icon:'☀️', num:'16', title:'Cât de activă ești în prezent?', sub:null, req:true,
+    opts:['Sedentară (birou, mașină, canapea)','Ușor activă (mers pe jos ocazional)','Moderat activă (mișcare regulată, 2-3x/săpt.)','Foarte activă (sport zilnic sau muncă fizică)'] },
+  { id:'q17', type:'single', block:'Stilul Tău de Viață', icon:'☀️', num:'17', title:'Ai mai făcut antrenamente acasă?', sub:null, req:true,
+    opts:['Nu, niciodată','Am încercat dar am renunțat','Da, ocazional','Da, regulat'] },
+  { id:'q18', type:'single', block:'Stilul Tău de Viață', icon:'☀️', num:'18', title:'Cât timp ai pe zi pentru antrenament?', sub:null, req:true,
+    opts:['Sub 15 minute','15-20 minute','20-30 minute','30-45 minute','Peste 45 minute'] },
+  { id:'q19', type:'multi', block:'Stilul Tău de Viață', icon:'☀️', num:'19', title:'Ce ai disponibil pentru antrenament?', sub:'Bifează tot ce ai — inclusiv obiecte din casă!', req:true,
+    opts:['Doar corpul meu (zero echipament)','Scaun stabil + canapea','Saltea / covorășel','Sticle de apă (ca greutăți)','Benzi elastice — ușoare','Benzi elastice — medii','Benzi elastice — grele','Gantere mici (1-3 kg)','Gantere medii (4-6 kg)','Gantere mari (7+ kg)','Kettlebell','Bicicletă staționară / bandă alergat'] },
+
+  // BLOC 3: SĂNĂTATE & LIMITĂRI
+  { id:'q20', type:'multi', block:'Sănătate & Limitări', icon:'🏥', num:'20', title:'Ai condiții medicale sau iei medicamente?', sub:'Confidențial — necesare pentru siguranța ta', req:true,
+    opts:['Nu am nicio condiție și nu iau medicamente','Diabet tip 2 / Pre-diabet / Rezistență la insulină','Hipotiroidism (Hashimoto sau alt tip)','PCOS (Sindromul ovarelor polichistice)','Hipertensiune arterială','Probleme cardiace','Depresie / Anxietate (diagnosticată)'] },
+  { id:'q21', type:'textarea', block:'Sănătate & Limitări', icon:'🏥', num:'21', title:'Medicamente / detalii suplimentare:', sub:'Scrie ce medicamente iei și orice altceva relevant.\nDacă nu iei nimic, scrie "Nu iau medicamente."', ph:'ex: Euthyrox 50mg, sau "Nu iau medicamente"', req:true },
+  { id:'q22', type:'multi', block:'Sănătate & Limitări', icon:'🏥', num:'22', title:'Ai limitări fizice sau dureri?', sub:'Foarte important! Adaptăm fiecare exercițiu.', req:true,
+    opts:['Nu am nicio limitare','Dureri de genunchi','Dureri de spate (lombară)','Dureri de spate (cervicală / gât)','Probleme la umăr','Probleme la încheietura mâinii','Probleme la șold','Hernie de disc','Incontinență urinară','Diastază abdominală','Varice / probleme circulatorii','Vertij la schimbări de poziție','Altceva'] },
+  { id:'q23', type:'single', block:'Sănătate & Limitări', icon:'🏥', num:'23', title:'Nivelul tău de experiență cu sportul?', sub:null, req:true,
+    opts:['Începător total — nu am făcut sport niciodată / de foarte mult timp','Începător — am făcut puțin dar nu consistent','Intermediar — fac sport ocazional, știu exercițiile de bază','Avansat — fac sport regulat și am experiență'] },
+
+  // BLOC 4: ALIMENTAȚIA TA
+  { id:'q24', type:'single', block:'Alimentația Ta', icon:'🥗', num:'24', title:'Câte mese mănânci pe zi?', sub:null, req:true,
+    opts:['1-2 mese (sar peste mese)','3 mese principale','3 mese + 1-2 gustări','Mănânc când apuc, fără ritm fix'] },
+  { id:'q25', type:'single', block:'Alimentația Ta', icon:'🥗', num:'25', title:'Micul dejun?', sub:null, req:true,
+    opts:['Da, în fiecare zi','Uneori','Aproape niciodată'] },
+  { id:'q26', type:'single', block:'Alimentația Ta', icon:'🥗', num:'26', title:'Mănânci emoțional?', sub:'Stres, tristețe, plictiseală', req:true,
+    opts:['Da, des — e o problemă reală','Uneori, când sunt stresată','Rar / Nu'] },
+  { id:'q27', type:'single', block:'Alimentația Ta', icon:'🥗', num:'27', title:'Câtă apă bei pe zi?', sub:null, req:true,
+    opts:['Sub 0.5 litri','0.5-1 litru','1-1.5 litri','1.5-2 litri','Peste 2 litri'] },
+  { id:'q28', type:'single', block:'Alimentația Ta', icon:'🥗', num:'28', title:'Ai mai ținut diete înainte?', sub:null, req:true,
+    opts:['Nu, niciodată','Da, 1-2 diete','Da, câteva (2-3 în ultimii ani)','Da, multe (am tot încercat)','Sunt mereu la o dietă sau alta'] },
+  { id:'q29', type:'multi', block:'Alimentația Ta', icon:'🥗', num:'29', title:'Ce tip de dietă ai mai urmat?', sub:'Bifează tot ce se aplică', req:false,
+    opts:['Keto / Low carb','Dietă cu deficit caloric','Intermittent fasting','Post negru / diete drastice','Diete din reviste / online','Nutriționist / dietetician'],
+    showIf:{q:'q28',vals:[1,2,3,4]} },
+  { id:'q30', type:'single', block:'Alimentația Ta', icon:'🥗', num:'30', title:'Urmezi un tip de alimentație?', sub:null, req:true,
+    opts:['Nu — mănânc de toate','Vegetariană','Vegană','Pescetariană','Fără gluten','Fără lactoză'] },
+  { id:'q31', type:'multi', block:'Alimentația Ta', icon:'🥗', num:'31', title:'Alergii sau intoleranțe?', sub:null, req:true,
+    opts:['Nu am','Lactoză','Gluten','Nuci / arahide','Ouă','Pește / fructe de mare'] },
+  { id:'q32', type:'textarea', block:'Alimentația Ta', icon:'🥗', num:'32', title:'Ce alimente NU mănânci sau eviți?', sub:'Scrie orice nu-ți place sau eviți: tipuri de carne, legume, fructe, lactate etc.\nDacă mănânci de toate, scrie: Nimic de evitat.', ph:'ex: nu mănânc porc, nu-mi plac vinetele și ciupercile, evit broccoli', req:true },
+  { id:'q33', type:'single', block:'Alimentația Ta', icon:'🥗', num:'33', title:'Ce complexitate preferi la rețete?', sub:null, req:true,
+    opts:['Foarte simplu — max 15-20 min, puține ingrediente','Mediu — pot găti 30-40 min','Meal prep (gătesc o dată, mănânc mai multe zile)','Mix — simple în timpul săptămânii, elaborate în weekend'] },
+  { id:'q34', type:'multi', block:'Alimentația Ta', icon:'🥗', num:'34', title:'Ce metode de gătit folosești?', sub:null, req:true,
+    opts:['La tigaie (stir-fry, soté)','La cuptor','Fiert / la abur','Air fryer','Slow cooker / multicooker','Nu gătesc — rețete fără gătit'] },
+  { id:'q35', type:'single', block:'Alimentația Ta', icon:'🥗', num:'35', title:'Buget săptămânal mâncare (pentru tine)?', sub:null, req:true,
+    opts:['Sub 150 RON','150-250 RON','250-400 RON','Peste 400 RON'] },
+
+  // BLOC 5: MOTIVAȚIE
+  { id:'q36', type:'multi', block:'Motivație', icon:'💪', num:'36', title:'Care este cel mai mare obstacol?', sub:'Poți bifa mai multe', req:true,
+    opts:['Lipsa de timp','Lipsa de motivație / disciplină','Nu știu ce să mănânc','Poftele / mâncatul emoțional','Lipsa de suport din familie','Stresul','Nu văd rezultate destul de repede','Costurile mâncării sănătoase'] },
+  { id:'q37', type:'scale', block:'Motivație', icon:'💪', num:'37', title:'Cât de motivată ești ACUM? (1-10)', sub:null, min:1, max:10, minLabel:'Curioasă', maxLabel:'Extrem de motivată', req:true },
+
+  // BLOC 6: CONTACT + GDPR
+  { id:'q38', type:'email', block:'Contact', icon:'📧', num:'38', title:'Care e adresa ta de email?', sub:'Aici vei primi raportul tău personalizat', ph:'email@exemplu.ro', req:true },
+  { id:'q39', type:'tel', block:'Contact', icon:'📧', num:'39', title:'Număr WhatsApp (opțional)', sub:'Doar dacă vrei să comunicăm și pe WhatsApp', ph:'+40 7xx xxx xxx', req:false },
+  { id:'q40', type:'gdpr', block:'Contact', icon:'🔒', num:'40', title:'Acord GDPR și confidențialitate', sub:null, req:true,
+    opts:['Da, sunt de acord','Nu sunt de acord'] },
+
+  { id:'end', type:'end' },
+  { id:'declined', type:'declined' }
+];
+
+// ===== STATE =====
+let idx = 0;
+let ans = {};
+let vis = [];
+
+function buildVis() {
+  vis = Q.filter(q => {
+    if (!q.showIf) return true;
+    const v = ans[q.showIf.q];
+    if (v === undefined || v === null) return false;
+    return q.showIf.vals.includes(v);
+  });
+}
+
+function cur() { return vis[idx]; }
+
+function totalSteps() { return vis.filter(q => q.num).length; }
+function curStep() {
+  let s = 0;
+  for (let i = 0; i <= idx; i++) { if (vis[i].num) s++; }
+  return s;
+}
+
+// ===== RENDER =====
+function render() {
+  buildVis();
+  const q = cur();
+  const main = document.getElementById('main');
+  const total = totalSteps();
+  const step = curStep();
+  const pct = q.type === 'welcome' ? 0 : q.type === 'end' || q.type === 'declined' ? 100 : Math.round((step / total) * 100);
+
+  document.getElementById('progressBar').style.width = pct + '%';
+  document.getElementById('progressInfo').textContent =
+    q.type === 'welcome' ? '' : q.type === 'end' || q.type === 'declined' ? 'Completat ✓' : step + ' / ' + total;
+
+  let html = '';
+  if (q.type === 'welcome') html = rWelcome();
+  else if (q.type === 'end') html = rEnd();
+  else if (q.type === 'declined') html = rDeclined();
+  else html = rQ(q);
+
+  main.innerHTML = '<div class="slide active">' + html + '</div>';
+  main.scrollTop = 0;
+
+  // Footer
+  const f = document.getElementById('footerNav');
+  const bb = document.getElementById('btnBack');
+  const bn = document.getElementById('btnNext');
+  const eh = document.getElementById('enterHint');
+
+  if (q.type === 'end' || q.type === 'declined') { f.style.display = 'none'; return; }
+  f.style.display = 'flex';
+  bb.style.display = idx === 0 ? 'none' : 'flex';
+  eh.style.display = q.type === 'welcome' ? 'none' : '';
+
+  if (q.type === 'welcome') { bn.textContent = 'Sunt gata! Să începem →'; bn.className = 'nav-btn btn-next'; }
+  else if (q.id === 'q40') { bn.textContent = '📨 Trimite chestionarul'; bn.className = 'nav-btn btn-submit'; }
+  else { bn.textContent = 'OK ✓'; bn.className = 'nav-btn btn-next'; }
+
+  setTimeout(() => {
+    const inp = main.querySelector('input:not([type=hidden]), textarea');
+    if (inp) inp.focus();
+  }, 120);
+}
+
+function rWelcome() {
+  return '<div class="welcome">' +
+    '<div class="welcome-emoji">💜</div>' +
+    '<h1>Hai să ne <em>cunoaștem!</em></h1>' +
+    '<p>Sunt Daniela și vreau să te ajut să devii cea mai bună versiune a ta.</p>' +
+    '<p>Acest chestionar este dedicat femeilor ocupate care vor o schimbare reală — dar nu au timp de sală, de diete complicate sau de planuri care nu se potrivesc cu viața lor.</p>' +
+    '<div class="welcome-badges">' +
+      '<span class="w-badge">⏱ 5-6 minute</span>' +
+      '<span class="w-badge">✅ Fără răspunsuri greșite</span>' +
+      '<span class="w-badge">🔒 100% confidențial</span>' +
+    '</div>' +
+    '<p>Cu cât ești mai sinceră și mai detaliată, cu atât surpriza va fi mai bună pentru tine. 😊</p>' +
+    '<p>La final primești acces la grupul meu PRIVAT de WhatsApp! 💚</p>' +
+    '<div class="welcome-creds">CYB — Daniela Cioclov<br>Tehnician Nutriționist | Fizioterapie & Kinetoterapie | Instructor Fitness<br>10+ ani</div>' +
+  '</div>';
+}
+
+function rEnd() {
+  const name = ans.q1 || '';
+  return '<div class="end-screen">' +
+    '<div class="end-emoji">🎉</div>' +
+    '<h2>Gata! Mulțumesc frumos' + (name ? ', <em>' + name + '</em>' : '') + '! 💜</h2>' +
+    '<p>Am primit răspunsurile tale. Fiecare răspuns contează mai mult decât crezi. 😉</p>' +
+    '<p><strong>Ce primești ACUM:</strong><br>Accesul tău la grupul PRIVAT de WhatsApp — doar pentru cele care au completat chestionarul, adică TU 🫵</p>' +
+    '<a href="https://chat.whatsapp.com/DLDKG6cIXZ3EH0GtDbfK6Y" target="_blank" class="whatsapp-btn">💬 Intră în Grupul WhatsApp</a>' +
+    '<p class="end-sub">Acolo vei primi GRATUIT: ghiduri, planuri de antrenament, sfaturi de nutriție și mult conținut valoros.<br>📩 Dacă nu poți deschide link-ul, trimite-mi un mesaj și ți-l trimit în privat.</p>' +
+  '</div>';
+}
+
+function rDeclined() {
+  return '<div class="declined">' +
+    '<div class="end-emoji">🤍</div>' +
+    '<h2>Înțelegem.</h2>' +
+    '<p>Din păcate, nu putem continua fără acordul tău pentru prelucrarea datelor.</p>' +
+    '<p>Dacă te răzgândești, ești oricând binevenită! 💜</p>' +
+  '</div>';
+}
+
+function rQ(q) {
+  let h = '';
+  if (q.block) h += '<div class="q-block-tag">' + (q.icon||'') + ' ' + q.block + '</div>';
+  h += '<div class="q-card">';
+  if (q.num) h += '<div class="q-number">' + q.num + '</div>';
+  h += '<div class="q-title">' + q.title + (q.req ? ' *' : '') + '</div>';
+  h += q.sub ? '<div class="q-subtitle">' + q.sub.replace(/\n/g,'<br>') + '</div>' : '<div class="q-spacer"></div>';
+
+  switch(q.type) {
+    case 'text':
+      h += '<input type="text" class="text-input" placeholder="' + (q.ph||'') + '" value="' + (ans[q.id]||'') + '" oninput="ans[\'' + q.id + '\']=this.value" />';
+      break;
+    case 'email':
+      h += '<input type="email" class="email-input" placeholder="' + (q.ph||'') + '" value="' + (ans[q.id]||'') + '" oninput="ans[\'' + q.id + '\']=this.value" inputmode="email" />';
+      break;
+    case 'tel':
+      h += '<input type="tel" class="tel-input" placeholder="' + (q.ph||'') + '" value="' + (ans[q.id]||'') + '" oninput="ans[\'' + q.id + '\']=this.value" inputmode="tel" />';
+      break;
+    case 'number':
+      h += '<input type="number" class="number-input" placeholder="' + (q.ph||'') + '" value="' + (ans[q.id]||'') + '" oninput="ans[\'' + q.id + '\']=this.value" inputmode="numeric" />';
+      break;
+    case 'textarea':
+      h += '<textarea class="text-area" placeholder="' + (q.ph||'') + '" oninput="ans[\'' + q.id + '\']=this.value">' + (ans[q.id]||'') + '</textarea>';
+      break;
+    case 'single':
+    case 'gdpr':
+      const sel = ans[q.id];
+      h += '<div class="options-list">';
+      (q.opts||[]).forEach((o,i) => {
+        const letter = q.type === 'gdpr' ? (i===0?'✓':'×') : String.fromCharCode(65+i);
+        h += '<div class="option ' + (sel===i?'selected':'') + '" onclick="pickOne(\'' + q.id + '\',' + i + ')">' +
+          '<span class="option-letter">' + letter + '</span><span>' + o + '</span></div>';
+      });
+      h += '</div>';
+      break;
+    case 'multi':
+      const checked = ans[q.id] || [];
+      h += '<div class="checkbox-list">';
+      (q.opts||[]).forEach((o,i) => {
+        h += '<div class="checkbox-item ' + (checked.includes(i)?'checked':'') + '" onclick="toggleChk(\'' + q.id + '\',' + i + ')">' +
+          '<span class="check-box"></span><span>' + o + '</span></div>';
+      });
+      h += '</div>';
+      break;
+    case 'scale':
+      h += '<div class="scale-wrap">';
+      for (let i = q.min; i <= q.max; i++) {
+        h += '<button class="scale-btn ' + (ans[q.id]===i?'selected':'') + '" onclick="pickScale(\'' + q.id + '\',' + i + ')">' + i + '</button>';
+      }
+      h += '</div><div class="scale-labels"><span>' + q.minLabel + '</span><span>' + q.maxLabel + '</span></div>';
+      break;
+  }
+  h += '<div class="error-msg" id="errMsg">Acest câmp este obligatoriu</div>';
+  h += '</div>';
+  return h;
+}
+
+// ===== INTERACTIONS =====
+function pickOne(id, i) {
+  ans[id] = i;
+  render();
+  const q = cur();
+  if (q.type === 'single') setTimeout(goNext, 300);
+}
+
+function toggleChk(id, i) {
+  if (!ans[id]) ans[id] = [];
+  const a = ans[id];
+  const p = a.indexOf(i);
+  if (p > -1) a.splice(p,1); else a.push(i);
+  ans[id] = [...a];
+  render();
+}
+
+function pickScale(id, v) {
+  ans[id] = v;
+  render();
+  setTimeout(goNext, 300);
+}
+
+// ===== NAVIGATION =====
+function goNext() {
+  const q = cur();
+  if (q.type !== 'welcome' && q.req && !validate(q)) {
+    const e = document.getElementById('errMsg');
+    if (e) { e.classList.add('show'); setTimeout(() => e.classList.remove('show'), 2000); }
+    const bn = document.getElementById('btnNext');
+    bn.style.animation = 'shake 0.35s ease';
+    setTimeout(() => bn.style.animation = '', 350);
+    return;
+  }
+  if (q.type === 'gdpr' && ans[q.id] === 1) {
+    idx = vis.findIndex(v => v.id === 'declined');
+    render(); return;
+  }
+  if (q.id === 'q40' && ans[q.id] === 0) { submitForm(); return; }
+  if (idx < vis.length - 1) {
+    idx++;
+    if (vis[idx] && vis[idx].type === 'declined') idx++;
+    render();
+  }
+}
+
+function goBack() {
+  if (idx > 0) {
+    idx--;
+    if (vis[idx] && (vis[idx].type === 'declined' || vis[idx].type === 'end')) idx--;
+    render();
+  }
+}
+
+function validate(q) {
+  if (!q.req) return true;
+  const v = ans[q.id];
+  if (q.type === 'text' || q.type === 'email' || q.type === 'tel' || q.type === 'textarea') return v && v.trim().length > 0;
+  if (q.type === 'number') return v !== undefined && v !== '' && !isNaN(v);
+  if (q.type === 'single' || q.type === 'gdpr' || q.type === 'scale') return v !== undefined && v !== null;
+  if (q.type === 'multi') return v && v.length > 0;
+  return true;
+}
+
+// ===== SUBMIT =====
+function submitForm() {
+  const data = {};
+  vis.forEach(q => {
+    if (!q.num) return;
+    const v = ans[q.id];
+    if (q.type === 'single' || q.type === 'gdpr') data[q.id] = q.opts ? q.opts[v] : v;
+    else if (q.type === 'multi') data[q.id] = v ? v.map(i => q.opts[i]).join(', ') : '';
+    else if (q.type === 'scale') data[q.id] = v + '/10';
+    else data[q.id] = v || '';
+  });
+  console.log('=== CYB CHESTIONAR ===');
+  console.log(JSON.stringify(data, null, 2));
+
+  // TODO: Connect to Formspree / PHP endpoint / Google Sheets
+  // fetch('https://formspree.io/f/YOUR_ID', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data) });
+
+  idx = vis.findIndex(v => v.id === 'end');
+  render();
+}
+
+// ===== KEYBOARD =====
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); goNext(); }
+});
+
+// ===== PREVENT BOUNCE ON IOS =====
+document.body.addEventListener('touchmove', function(e) {
+  if (e.target.closest('.main')) return;
+  e.preventDefault();
+}, { passive: false });
+
+// ===== INIT =====
+buildVis();
+render();
+</script>
+</body>
+</html>
