@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY || "");
+let resend: Resend | null = null;
+if (process.env.RESEND_API_KEY) {
+  resend = new Resend(process.env.RESEND_API_KEY);
+}
 
 interface QuestionMeta {
   id: string;
@@ -54,6 +57,10 @@ export async function POST(request: Request) {
 
     if (!body.answers || !body.questions) {
       return NextResponse.json({ error: "Missing answers or questions" }, { status: 400 });
+    }
+
+    if (!resend) {
+      return NextResponse.json({ error: "Email service not configured" }, { status: 503 });
     }
 
     const name = body.answers.q1 || "Anonim";
