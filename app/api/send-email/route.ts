@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const resend = new Resend(process.env.RESEND_API_KEY || "");
 
 interface QuestionMeta {
   id: string;
@@ -38,7 +38,7 @@ function buildEmailHtml(answers: Record<string, string>, questions: QuestionMeta
 <head><meta charset="utf-8"></head>
 <body style="margin:0;padding:0;background:#0f1923;font-family:Arial,sans-serif;">
   <div style="max-width:600px;margin:0 auto;padding:24px;">
-    <h1 style="color:#c8a96e;font-size:22px;margin-bottom:4px;">Change Yore Body</h1>
+    <h1 style="color:#c8a96e;font-size:22px;margin-bottom:4px;">Change Your Body</h1>
     <p style="color:#999;font-size:14px;margin-top:0;">Chestionar completat — ${new Date().toLocaleDateString("ro-RO", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })}</p>
     <table style="width:100%;border-collapse:collapse;margin-top:16px;">
       ${rows}
