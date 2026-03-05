@@ -15,8 +15,30 @@ const sans = Outfit({
 });
 
 export const metadata: Metadata = {
-  title: "Change Your Body - Chestionar",
-  description: "Chestionar de evaluare Change Your Body",
+  title: "Change Your Body — Daniela Cioclov",
+  description:
+    "Chestionar personalizat de fitness și nutriție pentru femei 35+.",
+  icons: {
+    icon: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
+  },
+  openGraph: {
+    title: "Change Your Body — Daniela Cioclov",
+    description:
+      "Chestionar personalizat de fitness și nutriție pentru femei 35+.",
+    url: "https://change-your-body.vercel.app",
+    siteName: "Change Your Body",
+    images: [
+      {
+        url: "https://change-your-body.vercel.app/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "Dana Cioclov — Change Your Body",
+      },
+    ],
+    locale: "ro_RO",
+    type: "website",
+  },
 };
 
 export default function RootLayout({
