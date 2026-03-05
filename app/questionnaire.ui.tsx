@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useState } from "react";
 import styles from "./questionnaire.module.css";
 import type { AnswerValue, Question } from "./questionnaire.types";
 
@@ -43,6 +46,8 @@ export function WelcomeScreen() {
 }
 
 export function EndScreen({ name }: { name: string }) {
+  const [agreedRules, setAgreedRules] = useState(false);
+
   return (
     <section className={styles.endScreen}>
       <div className={styles.endEmoji}>🎉</div>
@@ -51,7 +56,27 @@ export function EndScreen({ name }: { name: string }) {
       <p>Mulțumesc că ți-ai făcut timp — fiecare răspuns contează mai mult decât crezi. 😉</p>
       <p><strong>Ce primești ACUM:</strong></p>
       <p>💚 Accesul tău la grupul PRIVAT de WhatsApp — doar pentru cele care au completat chestionarul, adică TU 🫵</p>
-      <Link href="https://chat.whatsapp.com/DLDKG6cIXZ3EH0GtDbfK6Y" target="_blank" rel="noopener noreferrer" className={styles.whatsappBtn}>👉 INTRĂ ÎN GRUPUL WHATSAPP</Link>
+
+      <label className={styles.rulesCheckbox}>
+        <input type="checkbox" checked={agreedRules} onChange={() => setAgreedRules(!agreedRules)} />
+        <span className={styles.rulesCheckmark}>{agreedRules ? "✓" : ""}</span>
+        <span className={styles.rulesText}>
+          Sunt de acord cu regulile grupului:
+          <span className={styles.rulesList}>
+            • Respect față de toate membrele<br />
+            • Fără spam sau promovare personală<br />
+            • Informațiile partajate în grup sunt confidențiale<br />
+            • Întrebările sunt binevenite — nu există întrebări proaste
+          </span>
+        </span>
+      </label>
+
+      {agreedRules ? (
+        <Link href="https://chat.whatsapp.com/Gyi1jBE4lI5JQZKTJ9jxsC" target="_blank" rel="noopener noreferrer" className={styles.whatsappBtn}>👉 INTRĂ ÎN GRUPUL WHATSAPP</Link>
+      ) : (
+        <span className={styles.whatsappBtnDisabled}>👉 INTRĂ ÎN GRUPUL WHATSAPP</span>
+      )}
+
       <div className={styles.endSub}>
         <p>Acolo vei primi GRATUIT: ghiduri, planuri de antrenament, sfaturi de nutriție și mult conținut valoros.</p>
         <p>📩 Dacă nu poți copia sau deschide link-ul, trimite-mi un mesaj și ți-l trimit imediat în privat.</p>
@@ -66,8 +91,8 @@ export function DeclinedScreen() {
       <div className={styles.endEmoji}>🤍</div>
       <h2>Înțelegem.</h2>
       <p>Din păcate, nu putem continua fără acordul tău pentru prelucrarea datelor.</p>
+      <p>Datele tale NU au fost salvate sau trimise.</p>
       <p>Dacă te răzgândești, ești oricând binevenită! 💜</p>
-      <p>Poți completa din nou chestionarul oricând.</p>
     </section>
   );
 }
@@ -88,7 +113,7 @@ export function QuestionBody({ question, answer, error, onTextChange, onPickSing
       {question.block ? <p className={styles.qBlockTag}>{`${question.icon ?? ""} ${question.block}`}</p> : null}
       {question.num ? <p className={styles.qNumber}>{question.num}</p> : null}
       <h2 className={styles.qTitle}>{question.title}</h2>
-      {question.sub ? <p className={styles.qSubtitle}>{question.sub}</p> : <div className={styles.qSpacer} />}
+      {question.sub ? <p className={styles.qSubtitle} style={{ whiteSpace: "pre-line" }}>{question.sub}</p> : <div className={styles.qSpacer} />}
       <QuestionInput question={question} answer={answer} onTextChange={onTextChange} onPickSingle={onPickSingle} onToggleMulti={onToggleMulti} onPickScale={onPickScale} />
       <p className={error ? `${styles.errorMsg} ${styles.show}` : styles.errorMsg}>Required field</p>
     </section>

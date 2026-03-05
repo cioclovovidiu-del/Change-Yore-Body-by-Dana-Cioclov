@@ -93,7 +93,7 @@ export const QUESTIONS: Question[] = [
   // BLOC 6: CONTACT + GDPR
   { id:'q38', type:'email', block:'Contact', icon:'📧', num:'38', title:'Care e adresa ta de email?', sub:'Aici vei primi raportul tău personalizat', ph:'email@exemplu.ro', req:true },
   { id:'q39', type:'tel', block:'Contact', icon:'📧', num:'39', title:'Număr WhatsApp (opțional)', sub:'Doar dacă vrei să comunicăm și pe WhatsApp', ph:'+40 7xx xxx xxx', req:false },
-  { id:'q40', type:'gdpr', block:'Contact', icon:'🔒', num:'40', title:'Acord GDPR și confidențialitate', sub:null, req:true,
+  { id:'q40', type:'gdpr', block:'Contact', icon:'🔒', num:'40', title:'Acord GDPR și confidențialitate', sub:'Prin completarea acestui chestionar, ești de acord cu următoarele:\n\n1. Datele tale personale vor fi folosite EXCLUSIV pentru crearea planului tău personalizat de antrenament și nutriție.\n2. Informațiile tale NU vor fi făcute publice și NU vor fi partajate cu terțe părți — niciodată.\n3. Răspunsurile tale au rol doar de a crea un plan ajustat pe nevoile tale specifice.\n4. Poți solicita ștergerea completă a datelor tale în orice moment printr-un simplu mesaj.\n5. Programul are caracter informativ și nu înlocuiește sfatul medical. Dacă ai condiții medicale, consultă medicul.\n6. Rezultatele variază de la persoană la persoană și depind de respectarea programului.\n\n🔒 Datele tale sunt 100% confidențiale și în siguranță.', req:true,
     opts:['Da, sunt de acord','Nu sunt de acord'] },
 
   { id:'end', type:'end' },
