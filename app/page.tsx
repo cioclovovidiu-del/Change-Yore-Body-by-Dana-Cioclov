@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 
 const WA = "https://chat.whatsapp.com/Gyi1jBE4lI5JQZKTJ9jxsC";
 
@@ -74,7 +75,7 @@ export default function Home() {
       <nav className={`cn${scrolled ? " cn--s" : ""}`}>
         <div className="mw cn__in">
           <Link href="/" className="cn__logo">
-            Dana Cioclov &middot; <span>CYB</span>
+            <Image src="/logo.png" alt="Dana Cioclov — Change Your Body" width={120} height={120} priority />
           </Link>
           <Link href="/chestionar" className="cn__cta">
             Hai să ne cunoaștem
@@ -485,9 +486,9 @@ html{scroll-behavior:smooth}
   transition:background .3s,box-shadow .3s}
 .cn--s{background:rgba(15,25,35,.97);box-shadow:0 2px 20px rgba(0,0,0,.3)}
 .cn__in{display:flex;align-items:center;justify-content:space-between}
-.cn__logo{font-family:var(--font-cormorant),Georgia,serif;font-size:1.15rem;font-weight:600;
-  color:var(--ow);text-decoration:none}
-.cn__logo span{color:var(--teal-glow)}
+.cn__logo{display:flex;align-items:center;text-decoration:none}
+.cn__logo img{height:44px;width:auto;transition:opacity .2s}
+.cn__logo:hover img{opacity:.85}
 .cn__cta{font-size:.85rem;font-weight:500;color:var(--dark);background:var(--gold);
   padding:.5rem 1.2rem;border-radius:50px;text-decoration:none;transition:transform .2s,box-shadow .2s}
 .cn__cta:hover{transform:translateY(-1px);box-shadow:0 4px 15px rgba(196,163,90,.4)}
