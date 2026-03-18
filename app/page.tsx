@@ -360,7 +360,7 @@ export default function Home() {
         <div className="mw">
           <div className="ab__in fi">
             <div className="ab__ph">
-              <div className="ab__circle" />
+              <Image src="/daniela.webp" alt="Daniela Cioclov — Instructor Fitness & Nutriționist" width={280} height={280} className="ab__img" />
             </div>
             <div className="ab__txt">
               <h2>Cine e Daniela?</h2>
@@ -608,6 +608,8 @@ html{scroll-behavior:smooth}
 .ab__in{display:flex;flex-direction:column;align-items:center;gap:2.5rem;max-width:900px;margin:0 auto}
 .ab__circle{width:200px;height:200px;border-radius:50%;
   background:linear-gradient(135deg,var(--teal) 0%,var(--teal-glow) 100%);opacity:.25}
+.ab__img{width:280px;height:280px;border-radius:50%;object-fit:cover;
+  box-shadow:0 8px 30px rgba(42,165,160,.2);border:4px solid var(--teal-glow)}
 .ab__txt h2{text-align:left;margin-bottom:1rem}
 .ab__txt p{font-size:1.05rem;margin-bottom:1.5rem;max-width:520px}
 .ab__creds{display:flex;flex-direction:column;gap:.5rem;margin-bottom:1.5rem}
