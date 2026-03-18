@@ -608,7 +608,7 @@ html{scroll-behavior:smooth}
 .ab__in{display:flex;flex-direction:column;align-items:center;gap:2.5rem;max-width:900px;margin:0 auto}
 .ab__circle{width:200px;height:200px;border-radius:50%;
   background:linear-gradient(135deg,var(--teal) 0%,var(--teal-glow) 100%);opacity:.25}
-.ab__img{width:280px;height:280px;border-radius:50%;object-fit:cover;object-position:center 15%;
+.ab__img{width:280px;height:280px;border-radius:50%;object-fit:cover;
   box-shadow:0 8px 30px rgba(42,165,160,.2);border:4px solid var(--teal-glow)}
 .ab__ph{text-align:center}
 .ab__txt h2{text-align:center;margin-bottom:1rem}
