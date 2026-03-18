@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   title: "Change Your Body — Daniela Cioclov",
   description:
     "Chestionar personalizat de fitness și nutriție pentru femei 35+.",
-  metadataBase: new URL("https://change-your-body.vercel.app"),
+  metadataBase: new URL("https://changeyourbody.ro"),
   openGraph: {
     title: "Change Your Body — Daniela Cioclov",
     description:

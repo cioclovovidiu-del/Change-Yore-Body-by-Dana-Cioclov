@@ -115,7 +115,7 @@ export function QuestionBody({ question, answer, error, onTextChange, onPickSing
       <h2 className={styles.qTitle}>{question.title}</h2>
       {question.sub ? <p className={styles.qSubtitle} style={{ whiteSpace: "pre-line" }}>{question.sub}</p> : <div className={styles.qSpacer} />}
       <QuestionInput question={question} answer={answer} onTextChange={onTextChange} onPickSingle={onPickSingle} onToggleMulti={onToggleMulti} onPickScale={onPickScale} />
-      <p className={error ? `${styles.errorMsg} ${styles.show}` : styles.errorMsg}>Required field</p>
+      <p className={error ? `${styles.errorMsg} ${styles.show}` : styles.errorMsg}>Acest câmp este obligatoriu</p>
     </section>
   );
 }
@@ -162,5 +162,5 @@ interface FooterProps {
 
 export function Footer({ show, canGoBack, isWelcome, isSubmitStep, onBack, onNext }: FooterProps) {
   if (!show) return null;
-  return <footer className={styles.footerNav}><button type="button" className={`${styles.navBtn} ${styles.btnBack}`} onClick={onBack} style={{ visibility: canGoBack ? "visible" : "hidden" }}>Back</button><span className={styles.enterHint}>{isWelcome ? "Takes 5 minutes" : "Enter"}</span><button type="button" className={`${styles.navBtn} ${isSubmitStep ? styles.btnSubmit : styles.btnNext}`} onClick={onNext}>{isWelcome ? "Sunt gata! Să începem →" : isSubmitStep ? "Submit" : "Next"}</button></footer>;
+  return <footer className={styles.footerNav}><button type="button" className={`${styles.navBtn} ${styles.btnBack}`} onClick={onBack} style={{ visibility: canGoBack ? "visible" : "hidden" }}>Înapoi</button><span className={styles.enterHint}>{isWelcome ? "Durează 5 minute" : "Enter ↵"}</span><button type="button" className={`${styles.navBtn} ${isSubmitStep ? styles.btnSubmit : styles.btnNext}`} onClick={onNext}>{isWelcome ? "Sunt gata! Să începem →" : isSubmitStep ? "Trimite" : "Continuă"}</button></footer>;
 }
