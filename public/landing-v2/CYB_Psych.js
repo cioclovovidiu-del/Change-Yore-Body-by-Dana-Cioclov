@@ -2105,6 +2105,16 @@ function runPersonalLetterReleaseGate() {
     checks.routesValid = false;
   }
 
+  // ── 8. Contract integrity ─────────────────────────────────────────
+  try {
+    var contract = checkPersonalLetterContract();
+    details.contract = contract;
+    checks.contractIntact = contract.ok === true;
+  } catch(e) {
+    details.contract = { error: e.message || 'crash' };
+    checks.contractIntact = false;
+  }
+
   // ── Aggregate ───────────────────────────────────────────────────
   var allOk = true;
   for (var k in checks) {
