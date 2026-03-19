@@ -2284,3 +2284,55 @@ function checkPersonalLetterManifest() {
     errors: errors
   };
 }
+
+// ── MODULE CLOSURE ──────────────────────────────────────────────────
+// Official closure report for Personal Letter subsystem.
+// Relies on existing release gate, manifest, and contract checks.
+
+function getPersonalLetterModuleClosure() {
+  var checksResult = { releaseGate: false, manifest: false, contract: false };
+  var gateOk = false;
+
+  // 1. Release gate (runs all sub-validations)
+  try {
+    var gate = runPersonalLetterReleaseGate();
+    gateOk = gate.ok === true;
+    checksResult.releaseGate = gateOk;
+  } catch(e) {
+    checksResult.releaseGate = false;
+  }
+
+  // 2. Manifest
+  try {
+    var mf = checkPersonalLetterManifest();
+    checksResult.manifest = mf.ok === true;
+  } catch(e) {
+    checksResult.manifest = false;
+  }
+
+  // 3. Contract
+  try {
+    var ct = checkPersonalLetterContract();
+    checksResult.contract = ct.ok === true;
+  } catch(e) {
+    checksResult.contract = false;
+  }
+
+  var productionReady = checksResult.releaseGate && checksResult.manifest && checksResult.contract;
+
+  return {
+    ok: productionReady,
+    name: PERSONAL_LETTER_MANIFEST.name,
+    version: PERSONAL_LETTER_MANIFEST.version,
+    featureEnabled: !!PERSONAL_LETTER_ENABLED,
+    renderTargets: PERSONAL_LETTER_MANIFEST.renderTargets,
+    productionReady: productionReady,
+    checks: checksResult,
+    summary: {
+      states: PERSONAL_LETTER_MANIFEST.states,
+      api: PERSONAL_LETTER_MANIFEST.api,
+      validations: PERSONAL_LETTER_MANIFEST.validations,
+      contracts: PERSONAL_LETTER_MANIFEST.contracts
+    }
+  };
+}
