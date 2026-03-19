@@ -295,6 +295,50 @@ function buildPsychFragments() {
 // Deterministic. No AI. No randomness. No HTML output.
 // =============================================================================
 
+// ── LETTER CONFIG ───────────────────────────────────────────────────
+// Single source of truth for all letter constants, thresholds, rules.
+
+var LETTER_CONFIG = {
+  // Section order contract — used by picker, validator, composer
+  SECTIONS: ['opening', 'reflection', 'pattern', 'reframe', 'direction', 'soft_action', 'closing'],
+
+  // Sections that MUST exist for a valid letter
+  REQUIRED: ['opening', 'direction', 'closing'],
+
+  // Minimum number of valid sections (text.length > MIN_SECTION_LEN)
+  MIN_VALID_SECTIONS: 5,
+
+  // Minimum characters for a section to count as "valid"
+  MIN_SECTION_LEN: 20,
+
+  // Minimum parts from composer to produce a letter
+  MIN_COMPOSE_PARTS: 3,
+
+  // Final text word range
+  WORD_MIN: 180,
+  WORD_MAX: 420,
+
+  // Final text character minimum
+  CHAR_MIN: 500,
+
+  // Repetition: opener fingerprint word count
+  OPENER_WORDS: 4,
+
+  // Repetition: maximum significant word overlap between adjacent sections
+  MAX_OVERLAP: 0.4,
+
+  // Romanian stop words for overlap calculation
+  STOP_WORDS: ['și','e','nu','de','în','ce','că','cu','pe','la','o','a','ai','un','din','dar','sau','pentru','este','sunt','te','se','asta','mai','tot','fi','ca','el','ea'],
+
+  // Tone consistency rules: [condition(tone) → reject_id → fallback_id]
+  TONE_RULES: [
+    { check: function(t){ return t.pace === 'gentle' || t.vulnerability === 'protective'; },
+      reject: 'act_challenging', fallback: 'act_general', field: 'soft_action' },
+    { check: function(t){ return t.pace === 'ambitious' && t.motivation === 'challenging'; },
+      reject: 'act_protective', fallback: 'act_general', field: 'soft_action' }
+  ]
+};
+
 // ── LETTER CONTEXT BUILDER ──────────────────────────────────────────
 
 function buildPersonalLetterContext(profile, signals, routeData, scores, metabolicProfile, safetyTags, answers, completionData, tone) {
@@ -521,7 +565,7 @@ function buildLetterFragments() {
 
 function pickLetterFragments(letterContext, fragmentLibrary) {
   fragmentLibrary = fragmentLibrary || LETTER_FRAGMENTS;
-  var sections = ['opening', 'reflection', 'pattern', 'reframe', 'direction', 'soft_action', 'closing'];
+  var sections = LETTER_CONFIG.SECTIONS;
   var picked = {};
 
   for (var i = 0; i < fragmentLibrary.length; i++) {
@@ -544,7 +588,7 @@ function pickLetterFragments(letterContext, fragmentLibrary) {
 function composePersonalLetter(selectedFragments, letterContext) {
   if (!selectedFragments) return null;
 
-  var sections = ['opening', 'reflection', 'pattern', 'reframe', 'direction', 'soft_action', 'closing'];
+  var sections = LETTER_CONFIG.SECTIONS;
   var name = (letterContext.profile && letterContext.profile.name) || '';
   var parts = [];
 
@@ -556,7 +600,7 @@ function composePersonalLetter(selectedFragments, letterContext) {
     }
   }
 
-  if (parts.length < 3) return null;
+  if (parts.length < LETTER_CONFIG.MIN_COMPOSE_PARTS) return null;
   return parts.join('\n\n');
 }
 
@@ -567,34 +611,35 @@ function composePersonalLetter(selectedFragments, letterContext) {
 function _validateLetterContent(picked, letterContext) {
   if (!picked) return null;
 
-  var required = ['opening', 'direction', 'closing'];
+  var sections = LETTER_CONFIG.SECTIONS;
+  var required = LETTER_CONFIG.REQUIRED;
+  var minLen = LETTER_CONFIG.MIN_SECTION_LEN;
+  var minValid = LETTER_CONFIG.MIN_VALID_SECTIONS;
+
+  // Check required sections exist
   for (var r = 0; r < required.length; r++) {
     if (!picked[required[r]] || !picked[required[r]].text) return null;
   }
 
-  // Count valid sections — need at least 5
-  var sections = ['opening', 'reflection', 'pattern', 'reframe', 'direction', 'soft_action', 'closing'];
+  // Count valid sections
   var validCount = 0;
   for (var v = 0; v < sections.length; v++) {
-    if (picked[sections[v]] && picked[sections[v]].text && picked[sections[v]].text.length > 20) {
+    if (picked[sections[v]] && picked[sections[v]].text && picked[sections[v]].text.length > minLen) {
       validCount++;
     }
   }
-  if (validCount < 5) return null;
+  if (validCount < minValid) return null;
 
-  // Route consistency: detect pace/tone conflicts between fragments
+  // Route consistency: apply tone rules from config
   var tone = letterContext.tone || {};
-  var isGentle = tone.pace === 'gentle' || tone.vulnerability === 'protective';
-  var isAggressive = tone.pace === 'ambitious' && tone.motivation === 'challenging';
-
-  // If gentle tone: reject hard-push soft_action fragments
-  if (isGentle && picked.soft_action && picked.soft_action.id === 'act_challenging') {
-    // Swap to general fallback
-    picked.soft_action = _findFallback('soft_action', 'act_general');
-  }
-  // If aggressive tone: reject overly nurturing soft_action
-  if (isAggressive && picked.soft_action && picked.soft_action.id === 'act_protective') {
-    picked.soft_action = _findFallback('soft_action', 'act_general');
+  var rules = LETTER_CONFIG.TONE_RULES;
+  for (var tr = 0; tr < rules.length; tr++) {
+    var rule = rules[tr];
+    try {
+      if (rule.check(tone) && picked[rule.field] && picked[rule.field].id === rule.reject) {
+        picked[rule.field] = _findFallback(rule.field, rule.fallback);
+      }
+    } catch(e) {}
   }
 
   // Repetition control: check adjacent sections for duplicated opener phrases
@@ -604,16 +649,13 @@ function _validateLetterContent(picked, letterContext) {
     if (!picked[sec] || !picked[sec].text) continue;
     var curText = picked[sec].text;
 
-    // Check if this section starts with the same 4+ words as previous
     var curOpener = _extractOpener(curText);
     var prevOpener = _extractOpener(prevText);
     if (curOpener && prevOpener && curOpener === prevOpener) {
-      // Skip this section to avoid repetition
       picked[sec] = null;
     }
 
-    // Check for high similarity (>40% shared significant words)
-    if (prevText && curText && _wordOverlap(prevText, curText) > 0.4) {
+    if (prevText && curText && _wordOverlap(prevText, curText) > LETTER_CONFIG.MAX_OVERLAP) {
       picked[sec] = null;
     }
 
@@ -628,11 +670,11 @@ function _validateLetterContent(picked, letterContext) {
   // Re-count valid
   var finalCount = 0;
   for (var f = 0; f < sections.length; f++) {
-    if (picked[sections[f]] && picked[sections[f]].text && picked[sections[f]].text.length > 20) {
+    if (picked[sections[f]] && picked[sections[f]].text && picked[sections[f]].text.length > minLen) {
       finalCount++;
     }
   }
-  if (finalCount < 5) return null;
+  if (finalCount < minValid) return null;
 
   return picked;
 }
@@ -640,16 +682,16 @@ function _validateLetterContent(picked, letterContext) {
 // Helper: extract first 4 words as opener fingerprint
 function _extractOpener(text) {
   if (!text) return '';
-  var words = text.replace(/[.,!?—:;]/g, '').split(/\s+/).slice(0, 4);
-  if (words.length < 4) return '';
+  var n = LETTER_CONFIG.OPENER_WORDS;
+  var words = text.replace(/[.,!?—:;]/g, '').split(/\s+/).slice(0, n);
+  if (words.length < n) return '';
   return words.join(' ').toLowerCase();
 }
 
 // Helper: compute word overlap ratio between two texts (significant words only)
 function _wordOverlap(a, b) {
-  var stopWords = ['și','e','nu','de','în','ce','că','cu','pe','la','o','a','ai','un','din','dar','sau','pentru','este','sunt','te','se','asta','mai','tot','fi','ca','el','ea'];
-  var wordsA = _significantWords(a, stopWords);
-  var wordsB = _significantWords(b, stopWords);
+  var wordsA = _significantWords(a, LETTER_CONFIG.STOP_WORDS);
+  var wordsB = _significantWords(b, LETTER_CONFIG.STOP_WORDS);
   if (wordsA.length === 0 || wordsB.length === 0) return 0;
   var setB = {};
   for (var i = 0; i < wordsB.length; i++) setB[wordsB[i]] = true;
@@ -689,12 +731,12 @@ function _validateLetterText(text) {
   // Strip placeholder leftovers
   text = text.replace(/\[Prenume\]/g, '');
 
-  // Word count check: 180–420 range (generous bounds for edge cases)
+  // Word count check
   var words = text.split(/\s+/).filter(function(w){ return w.length > 0; });
-  if (words.length < 180 || words.length > 420) return null;
+  if (words.length < LETTER_CONFIG.WORD_MIN || words.length > LETTER_CONFIG.WORD_MAX) return null;
 
   // Character length minimum
-  if (text.length < 500) return null;
+  if (text.length < LETTER_CONFIG.CHAR_MIN) return null;
 
   return text;
 }
@@ -718,9 +760,25 @@ function buildPersonalLetter(letterContext) {
     text = _validateLetterText(text);
     if (!text) return null;
 
+    // Count active sections for meta
+    var activeSections = [];
+    var secs = LETTER_CONFIG.SECTIONS;
+    for (var m = 0; m < secs.length; m++) {
+      if (picked[secs[m]] && picked[secs[m]].text) activeSections.push(secs[m]);
+    }
+
+    var words = text.split(/\s+/).filter(function(w){ return w.length > 0; });
+
     return {
       text: text,
-      sections: picked
+      sections: picked,
+      meta: {
+        sectionCount: activeSections.length,
+        activeSections: activeSections,
+        wordCount: words.length,
+        route: (letterContext.routeData && letterContext.routeData.route) || 'GENERAL',
+        toneLabel: (letterContext.tone && letterContext.tone.label) || 'unknown'
+      }
     };
   } catch(e) {
     return null;
