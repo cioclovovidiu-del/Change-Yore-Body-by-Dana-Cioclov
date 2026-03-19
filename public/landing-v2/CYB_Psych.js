@@ -5,17 +5,41 @@
 // No DOM. No side effects. No randomness. Deterministic from same input.
 // =============================================================================
 
-// ── FEATURE FLAGS ───────────────────────────────────────────────────
+// ── FEATURE FLAGS & POLICY ──────────────────────────────────────────
 
 var PERSONAL_LETTER_ENABLED = true;
 
-// Deterministic rollout policy — checks flag + optional context conditions.
-// Returns true if Personal Letter should be built/rendered for this context.
+// Deterministic policy decision — centralized eligibility checks.
+// Returns structured decision object for diagnostics and gating.
+function getPersonalLetterPolicy(letterContext) {
+  var featureEnabled = !!PERSONAL_LETTER_ENABLED;
+  var hasContext = !!letterContext && typeof letterContext === 'object';
+  var hasRoute = hasContext && letterContext.routeData &&
+    typeof letterContext.routeData.route === 'string' && letterContext.routeData.route.length > 0;
+  var hasMinimumData = hasContext &&
+    !!letterContext.tone && typeof letterContext.tone === 'object' &&
+    !!letterContext.signals && typeof letterContext.signals === 'object' &&
+    !!letterContext.answers && typeof letterContext.answers === 'object';
+
+  var allowed = featureEnabled && hasContext && hasRoute && hasMinimumData;
+  var reason = !featureEnabled ? 'feature_disabled' :
+    !hasContext ? 'no_context' :
+    !hasRoute ? 'no_route' :
+    !hasMinimumData ? 'insufficient_data' : 'allowed';
+
+  return {
+    allowed: allowed,
+    reason: reason,
+    featureEnabled: featureEnabled,
+    hasContext: hasContext,
+    hasRoute: hasRoute,
+    hasMinimumData: hasMinimumData
+  };
+}
+
+// Thin wrapper — backward-compatible boolean check.
 function canUsePersonalLetter(letterContext) {
-  if (!PERSONAL_LETTER_ENABLED) return false;
-  if (!letterContext) return false;
-  // Future rollout conditions can be added here (route gates, etc.)
-  return true;
+  return getPersonalLetterPolicy(letterContext).allowed;
 }
 
 // ── TONE PROFILE ────────────────────────────────────────────────────
@@ -1134,7 +1158,8 @@ function _validateLetterText(text) {
 // Returns { text: string, sections: object } or null on failure.
 
 function buildPersonalLetter(letterContext) {
-  if (!canUsePersonalLetter(letterContext)) return null;
+  var policy = getPersonalLetterPolicy(letterContext);
+  if (!policy.allowed) return null;
 
   try {
     // Compute calibration, profile summary, and language tuning
@@ -1425,20 +1450,34 @@ function runLetterAuditBatch() {
   var profiles = _generateSyntheticProfiles();
   var results = [];
   var allOk = true;
+  var policyAllowed = 0;
+  var policyBlocked = 0;
+  var policyReasons = [];
 
   for (var i = 0; i < profiles.length; i++) {
+    var pol = getPersonalLetterPolicy(profiles[i].letterContext);
+    if (pol.allowed) { policyAllowed++; } else {
+      policyBlocked++;
+      policyReasons.push({ route: profiles[i].label, reason: pol.reason });
+    }
     var audit = auditPersonalLetter(profiles[i].letterContext);
     if (!audit.ok) allOk = false;
     results.push({
       route: profiles[i].label,
       ok: audit.ok,
       error: audit.error || null,
+      policyAllowed: pol.allowed,
+      policyReason: pol.reason,
       checks: audit.checks,
       stats: audit.stats
     });
   }
 
-  return { allOk: allOk, results: results };
+  return {
+    allOk: allOk,
+    results: results,
+    policy: { allowed: policyAllowed, blocked: policyBlocked, blockedReasons: policyReasons }
+  };
 }
 
 // ── SNAPSHOT LAYER ──────────────────────────────────────────────────
@@ -1645,12 +1684,12 @@ function _buildEdgeCaseMatrix() {
       return c;
     })(), expectsLetter: true, notes: ['null derived — calibration should use defaults'] },
 
-    // EC14: missing tone (force default tone path)
+    // EC14: missing tone (policy blocks — insufficient data)
     { id: 'ec_no_tone', ctx: (function(){
       var c = _mkCtx('DIVORCE', { divorce:true }, {});
       c.tone = null;
       return c;
-    })(), expectsLetter: true, notes: ['null tone — calibration falls to defaults'] },
+    })(), expectsLetter: false, notes: ['null tone — policy blocks as insufficient_data'] },
 
     // EC15: BURNOUT + max stress + low motivation
     { id: 'ec_burnout_extreme', ctx: _mkCtx('BURNOUT', {}, { q5:3, q6:3, q8:0, q21:2, q13:0, q15:0, q17:4 }),
