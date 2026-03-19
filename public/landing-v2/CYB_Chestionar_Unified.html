@@ -400,30 +400,20 @@ function render(){
       '<div class="emo-msg '+(P[s.id]!==undefined?'show':'')+'" id="emo">'+(P[s.id]!==undefined&&emoMessages[s.id]?emoMessages[s.id](P):'')+'</div>'+
     '</div>';
   }
-  // ── MINI: GDPR ────────────────────────────────────────────────
-  else if(s.type==='gdpr'){
-    btn.textContent=UI.buttons.next;
+  // ── MINI: GDPR + EMAIL (merged) ──────────────────────────────
+  else if(s.type==='gdpr_email'){
+    btn.textContent=UI.buttons.seeResults;
+    btn.className='btn btn-gold';
     btn.disabled=!P.gdpr;
     main.innerHTML='<div class="slide active">'+
       '<div class="q-label">'+s.label+'</div>'+
       '<div class="q-title">'+s.title+'</div>'+
       '<div class="q-sub">'+s.sub+'</div>'+
-      '<div class="chk '+(P.gdpr?'sel':'')+'" onclick="STATE.profile.gdpr=!STATE.profile.gdpr;render()" style="margin-top:12px">'+
+      '<input class="email-input" type="email" placeholder="'+s.ph+'" value="'+(P.email||'')+'" oninput="STATE.profile.email=this.value" style="margin-bottom:16px">'+
+      '<div class="chk '+(P.gdpr?'sel':'')+'" onclick="STATE.profile.gdpr=!STATE.profile.gdpr;render()" style="margin-top:4px">'+
         '<div class="chk-box"></div>'+
         '<span style="font-size:0.82rem;line-height:1.5">'+s.consent+'</span>'+
       '</div>'+
-    '</div>';
-  }
-  // ── MINI: EMAIL ───────────────────────────────────────────────
-  else if(s.type==='email'){
-    btn.textContent=UI.buttons.seeResults;
-    btn.className='btn btn-gold';
-    btn.disabled=!P.email||!P.email.includes('@');
-    main.innerHTML='<div class="slide active">'+
-      '<div class="q-label">'+s.label+'</div>'+
-      '<div class="q-title">'+s.title+'</div>'+
-      '<div class="q-sub">'+s.sub+'</div>'+
-      '<input class="email-input" type="email" placeholder="'+s.ph+'" value="'+(P.email||'')+'" oninput="STATE.profile.email=this.value;document.getElementById(\'btnNext\').disabled=!this.value.includes(\'@\')">'+
       '<div class="emo-msg show" style="margin-top:20px">'+UI.emailPreResults+'</div>'+
     '</div>';
   }

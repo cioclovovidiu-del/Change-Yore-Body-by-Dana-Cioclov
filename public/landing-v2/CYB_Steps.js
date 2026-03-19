@@ -53,8 +53,7 @@ var STEPS_MINI = [
       {icon:'🕊️',title:'Am pierdut pe cineva drag',desc:'Pierderea cuiva drag îmi afectează corpul și viața'},
       {icon:'✨',title:'Niciuna în special',desc:'Vreau doar să mă simt mai bine'},
     ]},
-  {id:'gdpr', type:'gdpr', ...COPY.mini.questions.gdpr},
-  {id:'email', type:'email', ...COPY.mini.questions.email},
+  {id:'gdpr_email', type:'gdpr_email', ...COPY.mini.questions.gdpr_email},
   {id:'mini_results', type:'mini_results'},
 ];
 

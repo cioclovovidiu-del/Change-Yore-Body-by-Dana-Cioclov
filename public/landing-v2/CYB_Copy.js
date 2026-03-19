@@ -72,8 +72,7 @@ const COPY = {
       activity: { label:'Stilul tău', title:'Cât de activă ești în prezent?', sub:'Alege varianta cea mai apropiată de realitate' },
       goal:     { label:'Obiectivul tău', title:'Care e obiectivul tău principal?', sub:'Alege ce contează cel mai mult pentru tine acum' },
       moment:   { label:'Momentul tău', title:'Ce moment traversezi acum?', sub:'Această întrebare ne ajută să personalizăm totul pe viața ta reală. Fără judecată.' },
-      gdpr:     { label:'Consimțământ', title:'Înainte de rezultate', sub:'Pentru a-ți calcula profilul și a-ți trimite rezultatele, avem nevoie de acordul tău.', consent:'Sunt de acord ca datele mele să fie procesate de CYB pentru a primi profilul personalizat și comunicări relevante. Pot revoca oricând.' },
-      email:    { label:'Contact', title:'Unde îți trimitem rezultatele?', sub:'Email-ul tău — aici primești profilul tău gratuit', ph:'email@exemplu.ro' },
+      gdpr_email: { label:'Aproape gata', title:'Rezultatele tale sunt gata', sub:'Emailul este opțional. Dacă îl lași, îți trimitem profilul și pe email. Dacă nu, poți vedea rezultatele imediat.', ph:'email@exemplu.ro (opțional)', consent:'Sunt de acord ca datele mele să fie procesate de CYB pentru a primi profilul personalizat și comunicări relevante. Pot revoca oricând.' },
     },
 
     // ── MINI EMOTIONAL ──────────────────────────────────────────────
@@ -118,7 +117,7 @@ const COPY = {
         blurHeading: 'Ce vei vedea blurat (teaser):',
         blurItems: ['Metabolismul tău bazal (BMR)','Necesarul caloric zilnic (TDEE)','Proiecție progres 12 săptămâni','Macro-uri zilnice (proteine/carbs/grăsimi)','Greutate ideală estimată','Profil metabolic pe traseul tău'],
       },
-      emailPreResults: 'Asta e tot! În câteva secunde vei vedea rezultatele tale personalizate.',
+      emailPreResults: 'Apasă butonul și vezi rezultatele tale personalizate — cu sau fără email.',
       measures: { heightLabel: 'Înălțime (cm)', weightLabel: 'Greutate (kg)' },
       results: {
         headerTitle: function(name) { return 'Rezultatele tale, ' + (name || ''); },
