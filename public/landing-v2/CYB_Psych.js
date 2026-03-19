@@ -1427,3 +1427,110 @@ function runLetterAuditBatch() {
 
   return { allOk: allOk, results: results };
 }
+
+// ── SNAPSHOT LAYER ──────────────────────────────────────────────────
+// Deterministic baseline snapshot for regression comparison.
+// No external libs. No UI impact. No render path cost.
+
+// Deterministic text fingerprint: sum-based hash of char codes + length
+function _textFingerprint(text) {
+  if (typeof text !== 'string' || text.length === 0) return '0:0:0';
+  var sum = 0;
+  var xor = 0;
+  for (var i = 0; i < text.length; i++) {
+    var c = text.charCodeAt(i);
+    sum = (sum + c * (i + 1)) & 0x7FFFFFFF;
+    xor = (xor ^ (c << (i % 16))) & 0x7FFFFFFF;
+  }
+  return text.length + ':' + sum.toString(36) + ':' + xor.toString(36);
+}
+
+// Create a compact snapshot signature from a buildPersonalLetter result
+function createLetterSnapshot(result) {
+  if (!result || !result.text || !result.meta) {
+    return null;
+  }
+
+  var meta = result.meta;
+  var sections = LETTER_CONFIG.SECTIONS;
+  var sectionKeys = [];
+  var fragmentIds = [];
+
+  for (var i = 0; i < sections.length; i++) {
+    var sec = sections[i];
+    if (result.sections && result.sections[sec] && result.sections[sec].text) {
+      sectionKeys.push(sec);
+      if (result.sections[sec].id) fragmentIds.push(result.sections[sec].id);
+    }
+  }
+
+  return {
+    route: meta.route || 'GENERAL',
+    sectionKeys: sectionKeys,
+    fragmentIds: fragmentIds,
+    wordCount: meta.wordCount || 0,
+    charCount: result.text.length,
+    calibrationLabel: (meta.calibration && meta.calibration.label) || '',
+    profileLabel: (meta.profileSummary && meta.profileSummary.profileLabel) || '',
+    languageLabel: (meta.languageProfile && meta.languageProfile.label) || '',
+    auditOk: (meta.audit && meta.audit.ok) || false,
+    textFingerprint: _textFingerprint(result.text)
+  };
+}
+
+// Compare two snapshots — returns { equal, diffs[] }
+function compareLetterSnapshots(a, b) {
+  if (!a && !b) return { equal: true, diffs: [] };
+  if (!a || !b) return { equal: false, diffs: [{ field: '_null', a: !!a, b: !!b }] };
+
+  var diffs = [];
+
+  // Scalar fields
+  var scalars = ['route', 'wordCount', 'charCount', 'calibrationLabel', 'profileLabel', 'languageLabel', 'auditOk', 'textFingerprint'];
+  for (var i = 0; i < scalars.length; i++) {
+    var f = scalars[i];
+    if (a[f] !== b[f]) {
+      diffs.push({ field: f, a: a[f], b: b[f] });
+    }
+  }
+
+  // Array fields — order-sensitive comparison
+  var arrays = ['sectionKeys', 'fragmentIds'];
+  for (var j = 0; j < arrays.length; j++) {
+    var af = arrays[j];
+    var arrA = a[af] || [];
+    var arrB = b[af] || [];
+    if (arrA.length !== arrB.length) {
+      diffs.push({ field: af, a: arrA.join(','), b: arrB.join(',') });
+    } else {
+      var arrDiff = false;
+      for (var k = 0; k < arrA.length; k++) {
+        if (arrA[k] !== arrB[k]) { arrDiff = true; break; }
+      }
+      if (arrDiff) {
+        diffs.push({ field: af, a: arrA.join(','), b: arrB.join(',') });
+      }
+    }
+  }
+
+  return { equal: diffs.length === 0, diffs: diffs };
+}
+
+// Batch baseline: one snapshot per synthetic route
+function runLetterSnapshotBaseline() {
+  var profiles = _generateSyntheticProfiles();
+  var snapshots = [];
+  var allOk = true;
+
+  for (var i = 0; i < profiles.length; i++) {
+    var result = buildPersonalLetter(profiles[i].letterContext);
+    var snap = result ? createLetterSnapshot(result) : null;
+    if (!snap) allOk = false;
+    snapshots.push({
+      route: profiles[i].label,
+      snapshot: snap
+    });
+  }
+
+  return { ok: allOk, total: snapshots.length, snapshots: snapshots };
+}
