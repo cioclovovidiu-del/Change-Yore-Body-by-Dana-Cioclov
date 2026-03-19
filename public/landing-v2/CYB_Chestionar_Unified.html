@@ -5,6 +5,25 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>CYB — Chestionar Unificat</title>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<!-- GA4 -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3YLYBMKY5N"></script>
+<script>
+window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}
+gtag('js',new Date());gtag('config','G-3YLYBMKY5N');
+</script>
+
+<!-- Meta Pixel -->
+<script>
+!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
+document,'script','https://connect.facebook.net/en_US/fbevents.js');
+fbq('init','1295926862451320');fbq('track','PageView');
+</script>
+<noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=1295926862451320&ev=PageView&noscript=1"/></noscript>
+
 <style>
 :root{--teal:#2AA5A0;--teal-deep:#1A9E9E;--teal-dark:#157575;--teal-glow:#3ECDC6;--gold:#C9A84C;--gold-warm:#D4AF37;--dark:#0F1923;--dark2:#1A2733;--dark3:#243442;--text:rgba(255,255,255,0.55);--white:#F8FAFC;--rose:#E8A0BF;--coral:#D85A30;--green:#48BB78;--red:#E07A6A;--purple:#8B5CF6;--serif:'Cormorant Garamond',Georgia,serif;--sans:'Outfit',system-ui,sans-serif}
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
@@ -214,6 +233,7 @@ function goNext(){
   if(s.type==='welcome'||s.type==='transition'||s.type==='mini_results'||s.type==='complet_results'){
     // handled by button
   }
+  if(s.type==='welcome'){try{gtag('event','questionnaire_start',{event_category:'funnel'});fbq('trackCustom','QuestionnaireStart');}catch(e){}}
   if(STATE.step < steps.length-1){
     STATE.step++;
     render();
@@ -228,6 +248,7 @@ function goBack(){
   }
 }
 function startComplet(){
+  try{gtag('event','complet_start',{event_category:'funnel',route:COPY.route.get(STATE.profile.moment)});}catch(e){}
   if(STATE.profile.gdpr&&!STATE._miniEmailSent){
     STATE._miniEmailSent=true;
     try{fetch('/api/send-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'mini',profile:STATE.profile})}).catch(function(){});}catch(e){}
@@ -411,6 +432,8 @@ function render(){
     document.getElementById('btnBack').style.visibility='hidden';
     btn.style.display='none';
 
+    if(!STATE._miniResultsTracked){STATE._miniResultsTracked=true;try{gtag('event','mini_complete',{event_category:'funnel',route:COPY.route.get(P.moment),bmi:calcBMI(P.weight,P.height).toFixed(1)});fbq('track','Lead');}catch(e){}}
+
     var _signals=interpretSignals(P,{});
     var _resolved=resolveRoute(P,_signals);
     var _msgVal=selectMessage({route:_resolved.route,signals:_signals,purpose:'VALIDATION',screenContext:'ONBOARDING'});
@@ -487,7 +510,7 @@ function render(){
         '<h3>'+U.heading+'</h3><p>'+U.body+'</p>'+
         '<div class="upgrade-plans">'+plansHtml+'</div>'+
         '<p style="margin-top:16px;font-size:0.78rem;color:var(--text)">'+U.footer(COPY.route.get(P.moment))+'</p>'+
-        '<a href="'+U.ctaWhatsApp+'" target="_blank" rel="noopener" class="btn btn-next" style="display:inline-block;text-decoration:none;margin-top:14px;padding:12px 28px">'+U.ctaButton+'</a>'+
+        '<a href="'+U.ctaWhatsApp+'" target="_blank" rel="noopener" class="btn btn-next" style="display:inline-block;text-decoration:none;margin-top:14px;padding:12px 28px" onclick="try{gtag(\'event\',\'whatsapp_click\',{source:\'mini_results\'});fbq(\'track\',\'Contact\');}catch(e){}">'+U.ctaButton+'</a>'+
         '<p style="margin-top:6px;font-size:0.75rem;color:var(--text)">'+U.ctaBody+'</p>'+
         '<button class="btn btn-gold" style="margin-top:18px" onclick="startComplet()">Continuă cu chestionarul complet →</button>'+
       '</div>'+
@@ -570,6 +593,8 @@ function render(){
   else if(s.type==='complet_results'){
     document.getElementById('btnBack').style.visibility='hidden';
     btn.style.display='none';
+
+    if(!STATE._completResultsTracked){STATE._completResultsTracked=true;try{gtag('event','complet_complete',{event_category:'funnel',route:COPY.route.get(P.moment)});fbq('track','CompleteRegistration');}catch(e){}}
 
     if(STATE.profile.gdpr&&!STATE._completEmailSent){
       STATE._completEmailSent=true;
@@ -669,7 +694,7 @@ function render(){
       '<div style="text-align:center;padding:28px 20px;margin-top:20px;border-radius:16px;background:linear-gradient(135deg,rgba(42,165,160,0.08),rgba(201,168,76,0.06));border:1px solid rgba(201,168,76,0.15)">'+
         '<h3 style="font-family:var(--serif);font-size:1.3rem;color:white;margin-bottom:8px">'+CR.ctaHeading+'</h3>'+
         '<p style="font-size:0.85rem;color:var(--text);line-height:1.7;margin-bottom:18px">'+CR.ctaBody+'</p>'+
-        '<a href="'+CR.ctaWhatsApp+'" target="_blank" rel="noopener" class="btn btn-gold" style="display:inline-block;text-decoration:none;padding:14px 32px">'+CR.ctaButton+'</a>'+
+        '<a href="'+CR.ctaWhatsApp+'" target="_blank" rel="noopener" class="btn btn-gold" style="display:inline-block;text-decoration:none;padding:14px 32px" onclick="try{gtag(\'event\',\'whatsapp_click\',{source:\'complet_results\'});fbq(\'track\',\'Contact\');}catch(e){}">'+CR.ctaButton+'</a>'+
       '</div>'+
       resetHtml+
     '</div>';

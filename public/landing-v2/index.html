@@ -1776,6 +1776,25 @@ body {
   .footer-links { flex-direction: column; gap: 24px; }
 }
 </style>
+
+<!-- GA4 -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3YLYBMKY5N"></script>
+<script>
+window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}
+gtag('js',new Date());gtag('config','G-3YLYBMKY5N');
+</script>
+
+<!-- Meta Pixel -->
+<script>
+!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
+document,'script','https://connect.facebook.net/en_US/fbevents.js');
+fbq('init','1295926862451320');fbq('track','PageView');
+</script>
+<noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=1295926862451320&ev=PageView&noscript=1"/></noscript>
+
 </head>
 <body>
 
@@ -2486,7 +2505,7 @@ body {
           <span>by Dana Cioclov</span>
         </div>
         <p class="footer-brand-desc">Program personalizat de fitness și nutriție pentru femei 35+. Construit pe tine, nu pe un tipar.</p>
-        <a href="https://chat.whatsapp.com/Gyi1jBE4lI5JQZKTJ9jxsC" target="_blank" rel="noopener" class="footer-whatsapp">
+        <a href="https://chat.whatsapp.com/Gyi1jBE4lI5JQZKTJ9jxsC" target="_blank" rel="noopener" class="footer-whatsapp" onclick="try{gtag('event','whatsapp_click',{source:'landing_footer'});fbq('track','Contact');}catch(e){}">
           💬 Grup WhatsApp CYB
         </a>
       </div>
