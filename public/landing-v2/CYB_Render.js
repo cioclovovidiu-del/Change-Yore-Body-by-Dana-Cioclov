@@ -5,6 +5,19 @@
 //           _transBlockMap), and STATE + helpers from the runtime.
 // =============================================================================
 
+// ── HTML safety for user-generated / fragment text ──────────────────
+function _escLetterHtml(s) {
+  if (typeof s !== 'string') return '';
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Safe name: returns escaped name or empty string (never raw placeholder) ─
+function _safeName(name) {
+  var n = (typeof name === 'string') ? name.trim() : '';
+  if (!n || n === '[Prenume]') return '';
+  return _escLetterHtml(n);
+}
+
 function renderWelcome(s, P, btn, resetHtml) {
   btn.textContent = UI.buttons.start;
   var w = UI.welcome;
@@ -332,6 +345,35 @@ function renderCompletResults(s, P, A, btn, resetHtml) {
   var _cPsychCtx = buildPsychContext(P, _cSig, _cRoute, {stress: cStress, hormonal: cHormonal}, _cMetaProfile, _cTags, A, {});
   var _cPsychMsg = buildFlowMessage(_cPsychCtx, 'complet_results');
   var _cValText = _cPsychMsg || personalize(_cMsgVal.text, P.name);
+
+  // Personal letter (hardened)
+  var _cLetterCtx = buildPersonalLetterContext(P, _cSig, _cRoute, {stress: cStress, hormonal: cHormonal}, _cMetaProfile, _cTags, A, {}, _cPsychCtx.tone);
+  var _cLetter = null;
+  try { _cLetter = buildPersonalLetter(_cLetterCtx); } catch(e) { _cLetter = null; }
+  var _cLetterHtml = '';
+  if (_cLetter && typeof _cLetter.text === 'string' && _cLetter.text.length >= 100) {
+    // Strip any leftover [Prenume] placeholders (name safety)
+    var _cLetterSafe = _cLetter.text.replace(/\[Prenume\]/g, _safeName(P.name));
+    var _cLetterParagraphs = _cLetterSafe.split('\n\n');
+    var _cLetterBody = '';
+    for (var _li = 0; _li < _cLetterParagraphs.length; _li++) {
+      var _lp = _cLetterParagraphs[_li].replace(/^\s+|\s+$/g, '');
+      if (!_lp) continue;
+      var _isSignature = _li === _cLetterParagraphs.length - 1 && _lp.indexOf('\n') !== -1;
+      if (_isSignature) {
+        _cLetterBody += '<p class="cyb-letter-signature" style="font-size:0.88rem;color:var(--teal-glow);line-height:1.8;margin-top:16px;font-style:italic;white-space:pre-line">' + _escLetterHtml(_lp) + '</p>';
+      } else {
+        _cLetterBody += '<p class="cyb-letter-paragraph" style="font-size:0.88rem;color:rgba(255,255,255,0.65);line-height:1.8;margin-bottom:14px">' + _escLetterHtml(_lp) + '</p>';
+      }
+    }
+    if (_cLetterBody) {
+      _cLetterHtml = '<div class="cyb-letter-block" style="margin:24px 0;padding:24px 20px;border-radius:16px;background:linear-gradient(135deg,rgba(42,165,160,0.04),rgba(201,168,76,0.03));border:1px solid rgba(42,165,160,0.1)">' +
+        '<div class="cyb-letter-label" style="font-size:0.7rem;color:var(--teal-glow);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:14px;font-weight:600">Scrisoarea ta personală</div>' +
+        '<div class="cyb-letter-body">' + _cLetterBody + '</div>' +
+      '</div>';
+    }
+  }
+
   var cProfile = _cMetaProfile;
   var cTags = _cTags;
   var cBmr = calcBMR(P.weight, P.height, P.age);
@@ -352,6 +394,7 @@ function renderCompletResults(s, P, A, btn, resetHtml) {
       '<p style="font-size:0.82rem">' + CR.routePrefix + ': <strong style="color:var(--gold)">' + COPY.route.get(P.moment) + '</strong> · ' + cTotalQ + ' ' + CR.analyzedSuffix + '</p>' +
     '</div>' +
     '<div class="emo-msg show" style="margin-bottom:20px">' + _cValText + '</div>' +
+    _cLetterHtml +
     '<div class="profile-card">' +
       '<div style="font-size:0.7rem;color:var(--text);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px">' + CR.profileLabel + '</div>' +
       '<div class="profile-name" style="color:' + cProfile.color + '">' + cProfile.name + '</div>' +
