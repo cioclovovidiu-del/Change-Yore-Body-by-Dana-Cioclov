@@ -1756,3 +1756,149 @@ function _runSingleEdgeCase(ec) {
     notes: notes
   };
 }
+
+// ── RELEASE READINESS GATE ──────────────────────────────────────────
+// Aggregates all Personal Letter validations into one deterministic verdict.
+// No UI impact. No render path cost. Offline release validation only.
+
+var PERSONAL_LETTER_VERSION = 'PL-1.0.0-3L';
+
+function runPersonalLetterReleaseGate() {
+  var checks = {
+    auditBatch: false,
+    snapshotBaseline: false,
+    edgeCases: false,
+    deterministic: false,
+    shapeValid: false,
+    placeholderClean: false,
+    routesValid: false
+  };
+  var stats = {
+    totalRoutes: 0,
+    totalEdgeCases: 0,
+    passedEdgeCases: 0,
+    failedEdgeCases: 0,
+    snapshotCount: 0
+  };
+  var details = {};
+
+  // ── 1. Audit batch ──────────────────────────────────────────────
+  try {
+    var audit = runLetterAuditBatch();
+    details.audit = audit;
+    checks.auditBatch = audit.allOk === true;
+    stats.totalRoutes = audit.results ? audit.results.length : 0;
+  } catch(e) {
+    details.audit = { error: e.message || 'crash' };
+  }
+
+  // ── 2. Snapshot baseline ────────────────────────────────────────
+  try {
+    var snaps = runLetterSnapshotBaseline();
+    details.snapshots = snaps;
+    checks.snapshotBaseline = snaps.ok === true;
+    stats.snapshotCount = snaps.total || 0;
+  } catch(e) {
+    details.snapshots = { error: e.message || 'crash' };
+  }
+
+  // ── 3. Edge-case matrix ─────────────────────────────────────────
+  try {
+    var edge = runLetterEdgeCaseMatrix();
+    details.edgeCases = edge;
+    checks.edgeCases = edge.ok === true;
+    stats.totalEdgeCases = edge.total || 0;
+    stats.passedEdgeCases = edge.passed || 0;
+    stats.failedEdgeCases = edge.failed || 0;
+  } catch(e) {
+    details.edgeCases = { error: e.message || 'crash' };
+  }
+
+  // ── 4. Determinism: run baseline twice, compare ─────────────────
+  try {
+    var snaps2 = runLetterSnapshotBaseline();
+    var detOk = true;
+    if (details.snapshots && details.snapshots.snapshots && snaps2.snapshots) {
+      var s1 = details.snapshots.snapshots;
+      var s2 = snaps2.snapshots;
+      for (var d = 0; d < s1.length; d++) {
+        if (!s1[d].snapshot && !s2[d].snapshot) continue;
+        if (!s1[d].snapshot || !s2[d].snapshot) { detOk = false; break; }
+        var cmp = compareLetterSnapshots(s1[d].snapshot, s2[d].snapshot);
+        if (!cmp.equal) { detOk = false; break; }
+      }
+    } else {
+      detOk = false;
+    }
+    checks.deterministic = detOk;
+  } catch(e) {
+    checks.deterministic = false;
+  }
+
+  // ── 5. Shape validation: all successful routes have valid shape ──
+  try {
+    var profiles = _generateSyntheticProfiles();
+    var shapeOk = true;
+    for (var sv = 0; sv < profiles.length; sv++) {
+      var lr = buildPersonalLetter(profiles[sv].letterContext);
+      if (!lr) { shapeOk = false; continue; }
+      if (typeof lr.text !== 'string' ||
+          typeof lr.sections !== 'object' ||
+          !lr.meta ||
+          typeof lr.meta.sectionCount !== 'number' ||
+          !Array.isArray(lr.meta.activeSections) ||
+          typeof lr.meta.wordCount !== 'number' ||
+          !lr.meta.calibration ||
+          !lr.meta.profileSummary ||
+          !lr.meta.languageProfile ||
+          !lr.meta.audit) {
+        shapeOk = false;
+      }
+    }
+    checks.shapeValid = shapeOk;
+  } catch(e) {
+    checks.shapeValid = false;
+  }
+
+  // ── 6. Placeholder clean: no [Prenume] in any route output ──────
+  try {
+    var profiles2 = _generateSyntheticProfiles();
+    var plOk = true;
+    for (var pc = 0; pc < profiles2.length; pc++) {
+      var lr2 = buildPersonalLetter(profiles2[pc].letterContext);
+      if (lr2 && lr2.text && lr2.text.indexOf('[Prenume]') !== -1) {
+        plOk = false;
+      }
+    }
+    checks.placeholderClean = plOk;
+  } catch(e) {
+    checks.placeholderClean = false;
+  }
+
+  // ── 7. All routes valid: every synthetic route produces a letter ─
+  try {
+    var profiles3 = _generateSyntheticProfiles();
+    var rvOk = true;
+    for (var rv = 0; rv < profiles3.length; rv++) {
+      var lr3 = buildPersonalLetter(profiles3[rv].letterContext);
+      if (!lr3 || !lr3.text) { rvOk = false; }
+    }
+    checks.routesValid = rvOk;
+  } catch(e) {
+    checks.routesValid = false;
+  }
+
+  // ── Aggregate ───────────────────────────────────────────────────
+  var allOk = true;
+  for (var k in checks) {
+    if (checks.hasOwnProperty(k) && !checks[k]) { allOk = false; break; }
+  }
+
+  return {
+    ok: allOk,
+    version: PERSONAL_LETTER_VERSION,
+    checks: checks,
+    stats: stats,
+    details: details
+  };
+}
