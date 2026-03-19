@@ -336,7 +336,34 @@ var LETTER_CONFIG = {
       reject: 'act_challenging', fallback: 'act_general', field: 'soft_action' },
     { check: function(t){ return t.pace === 'ambitious' && t.motivation === 'challenging'; },
       reject: 'act_protective', fallback: 'act_general', field: 'soft_action' }
-  ]
+  ],
+
+  // Calibration rules: [condition(calibration) → reject_id → fallback_id → field]
+  // Applied AFTER tone rules, based on calibration levels
+  CALIBRATION_RULES: [
+    // High softness → reject aggressive direction
+    { check: function(cal){ return cal.softnessLevel >= 3; },
+      reject: 'dir_ambitious', fallback: 'dir_gentle', field: 'direction' },
+    // High push + low softness → reject overly protective soft_action
+    { check: function(cal){ return cal.pushLevel >= 3 && cal.softnessLevel <= 1; },
+      reject: 'act_protective', fallback: 'act_coaching', field: 'soft_action' },
+    // High reassurance → reject direct reframe in favor of protective
+    { check: function(cal){ return cal.reassuranceLevel >= 3; },
+      reject: 'rfr_direct', fallback: 'rfr_protective', field: 'reframe' },
+    // Low push → reject challenging action
+    { check: function(cal){ return cal.pushLevel <= 1; },
+      reject: 'act_challenging', fallback: 'act_general', field: 'soft_action' }
+  ],
+
+  // Priority conflict resolution order (higher index = higher priority)
+  // When signals conflict, higher-priority signal wins
+  PRIORITY_ORDER: {
+    overwhelm: 5,      // highest — always respected
+    shame: 4,           // second highest — reduces push
+    protective_route: 3,// route-level protection
+    structure_need: 2,  // structural preference
+    readiness: 1        // lowest — only applies if no conflicts above
+  }
 };
 
 // ── LETTER CONTEXT BUILDER ──────────────────────────────────────────
@@ -389,6 +416,96 @@ function buildPersonalLetterContext(profile, signals, routeData, scores, metabol
       lowMotiv: lowMotiv
     }
   };
+}
+
+// ── PROFILE CALIBRATION LAYER ───────────────────────────────────────
+// Deterministic calibration derived from letter context.
+// Returns { softnessLevel, directionLevel, pushLevel, reassuranceLevel, structureLevel, label }
+// Each level: 1 (low), 2 (medium), 3 (high)
+
+function calibrateLetterProfile(letterContext) {
+  if (!letterContext) return _defaultCalibration();
+
+  var sig = letterContext.signals || {};
+  var tone = letterContext.tone || {};
+  var der = letterContext.derived || {};
+  var scores = letterContext.scores || {};
+  var route = (letterContext.routeData && letterContext.routeData.route) || 'GENERAL';
+  var prio = LETTER_CONFIG.PRIORITY_ORDER;
+
+  // ── Base levels from tone ──────────────────────────────────────
+  var softness = tone.vulnerability === 'protective' ? 3 : tone.vulnerability === 'warm' ? 2 : 1;
+  var direction = tone.pace === 'gentle' ? 1 : tone.pace === 'structured' ? 2 : 3;
+  var push = tone.motivation === 'nurturing' ? 1 : tone.motivation === 'coaching' ? 2 : 3;
+  var reassurance = tone.vulnerability === 'protective' ? 3 : tone.vulnerability === 'warm' ? 2 : 1;
+  var structure = sig.structureNeed === 'high' ? 3 : sig.structureNeed === 'medium' ? 2 : 1;
+
+  // ── Priority-based conflict resolution ─────────────────────────
+  // P5: Overwhelm — highest priority, caps push and direction
+  if (sig.overwhelmed) {
+    push = 1;
+    if (softness < 2) softness = 2;
+    if (reassurance < 2) reassurance = 2;
+    if (direction > 1) direction = 1;
+  }
+
+  // P4: Shame/self-blame — reduces push, raises reassurance
+  if (sig.shameRisk === 'high' || sig.selfBlame === 'high') {
+    if (push > 1) push = 1;
+    reassurance = 3;
+    if (softness < 2) softness = 2;
+  } else if (sig.selfBlame === 'medium') {
+    if (push > 2) push = 2;
+    if (reassurance < 2) reassurance = 2;
+  }
+
+  // P3: Protective route — floor on softness
+  if (route === 'LOSS' || route === 'BURNOUT') {
+    if (softness < 2) softness = 2;
+    if (push > 2) push = 2;
+  }
+  if (route === 'POSTPARTUM' || route === 'DIVORCE') {
+    if (softness < 2) softness = 2;
+  }
+
+  // P2: Structure need — raise structure level
+  if (sig.structureNeed === 'high' && sig.actionCapacity !== 'low') {
+    if (structure < 3) structure = 3;
+    if (direction < 2) direction = 2;
+  }
+
+  // P1: Readiness — only raises push if no higher-priority conflicts
+  if (der.highMotiv && sig.actionCapacity === 'high' && !sig.overwhelmed &&
+      sig.shameRisk !== 'high' && sig.selfBlame !== 'high') {
+    if (push < 2) push = 2;
+    if (direction < 2) direction = 2;
+  }
+
+  // ── Stress modifiers ──────────────────────────────────────────
+  if (der.highStress) {
+    if (softness < 2) softness = 2;
+    if (push > 2) push = 2;
+  }
+
+  // ── Clamp all to 1-3 ─────────────────────────────────────────
+  softness = Math.max(1, Math.min(3, softness));
+  direction = Math.max(1, Math.min(3, direction));
+  push = Math.max(1, Math.min(3, push));
+  reassurance = Math.max(1, Math.min(3, reassurance));
+  structure = Math.max(1, Math.min(3, structure));
+
+  return {
+    softnessLevel: softness,
+    directionLevel: direction,
+    pushLevel: push,
+    reassuranceLevel: reassurance,
+    structureLevel: structure,
+    label: 's' + softness + 'd' + direction + 'p' + push + 'r' + reassurance + 'st' + structure
+  };
+}
+
+function _defaultCalibration() {
+  return { softnessLevel: 2, directionLevel: 2, pushLevel: 2, reassuranceLevel: 2, structureLevel: 2, label: 's2d2p2r2st2' };
 }
 
 // ── LETTER FRAGMENT LIBRARY ─────────────────────────────────────────
@@ -642,6 +759,19 @@ function _validateLetterContent(picked, letterContext) {
     } catch(e) {}
   }
 
+  // Calibration consistency: apply calibration rules from config
+  var cal = letterContext._calibration || _defaultCalibration();
+  var calRules = LETTER_CONFIG.CALIBRATION_RULES;
+  for (var cr = 0; cr < calRules.length; cr++) {
+    var cRule = calRules[cr];
+    try {
+      if (cRule.check(cal) && picked[cRule.field] && picked[cRule.field].id === cRule.reject) {
+        var fb = _findFallback(cRule.field, cRule.fallback);
+        if (fb) picked[cRule.field] = fb;
+      }
+    } catch(e) {}
+  }
+
   // Repetition control: check adjacent sections for duplicated opener phrases
   var prevText = '';
   for (var s = 0; s < sections.length; s++) {
@@ -748,9 +878,13 @@ function buildPersonalLetter(letterContext) {
   if (!letterContext) return null;
 
   try {
+    // Compute calibration and attach to context for validation layer
+    var calibration = calibrateLetterProfile(letterContext);
+    letterContext._calibration = calibration;
+
     var picked = pickLetterFragments(letterContext);
 
-    // Content quality gate
+    // Content quality gate (uses tone + calibration rules)
     picked = _validateLetterContent(picked, letterContext);
     if (!picked) return null;
 
@@ -777,7 +911,8 @@ function buildPersonalLetter(letterContext) {
         activeSections: activeSections,
         wordCount: words.length,
         route: (letterContext.routeData && letterContext.routeData.route) || 'GENERAL',
-        toneLabel: (letterContext.tone && letterContext.tone.label) || 'unknown'
+        toneLabel: (letterContext.tone && letterContext.tone.label) || 'unknown',
+        calibration: calibration
       }
     };
   } catch(e) {
