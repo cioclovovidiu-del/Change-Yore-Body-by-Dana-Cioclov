@@ -26,10 +26,10 @@ function renderTextInput(s, P, btn) {
   btn.textContent = UI.buttons.next;
   btn.disabled = !P[s.id];
   return '<div class="slide active">' +
-    '<div class="q-label">' + s.label + '</div>' +
-    '<div class="q-title">' + s.title + '</div>' +
-    '<div class="q-sub">' + s.sub + '</div>' +
-    '<input class="text-input" type="text" placeholder="' + s.ph + '" value="' + (P[s.id] || '') + '" oninput="STATE.profile[\'' + s.id + '\']=this.value;document.getElementById(\'btnNext\').disabled=!this.value.trim();showEmo(\'' + s.id + '\')">' +
+    '<div class="q-label">' + (s.label || '') + '</div>' +
+    '<div class="q-title">' + (s.title || '') + '</div>' +
+    '<div class="q-sub">' + (s.sub || '') + '</div>' +
+    '<input class="text-input" type="text" placeholder="' + (s.ph || '') + '" value="' + (P[s.id] || '') + '" oninput="STATE.profile[\'' + s.id + '\']=this.value;document.getElementById(\'btnNext\').disabled=!this.value.trim();showEmo(\'' + s.id + '\')">' +
     '<div class="emo-msg ' + (P[s.id] ? 'show' : '') + '" id="emo">' + (P[s.id] && emoMessages[s.id] ? emoMessages[s.id](P) : '') + '</div>' +
   '</div>';
 }
@@ -38,10 +38,10 @@ function renderNumberInput(s, P, btn) {
   btn.textContent = UI.buttons.next;
   btn.disabled = !P[s.id];
   return '<div class="slide active">' +
-    '<div class="q-label">' + s.label + '</div>' +
-    '<div class="q-title">' + s.title + '</div>' +
-    '<div class="q-sub">' + s.sub + '</div>' +
-    '<input class="number-input" type="number" placeholder="' + s.ph + '" min="' + s.min + '" max="' + s.max + '" value="' + (P[s.id] || '') + '" oninput="STATE.profile[\'' + s.id + '\']=parseInt(this.value);document.getElementById(\'btnNext\').disabled=!this.value;showEmo(\'' + s.id + '\')">' +
+    '<div class="q-label">' + (s.label || '') + '</div>' +
+    '<div class="q-title">' + (s.title || '') + '</div>' +
+    '<div class="q-sub">' + (s.sub || '') + '</div>' +
+    '<input class="number-input" type="number" placeholder="' + (s.ph || '') + '" min="' + (s.min || '') + '" max="' + (s.max || '') + '" value="' + (P[s.id] || '') + '" oninput="STATE.profile[\'' + s.id + '\']=parseInt(this.value);document.getElementById(\'btnNext\').disabled=!this.value;showEmo(\'' + s.id + '\')">' +
     '<div class="emo-msg" id="emo"></div>' +
   '</div>';
 }
@@ -220,11 +220,10 @@ function renderMiniResults(s, P, A, btn, resetHtml) {
 function renderTransition(s, P, A, btn) {
   btn.textContent = COPY.ui.buttons.next;
   btn.disabled = true;
-  btn.style.opacity = '0.5';
   // Unlock NEXT after 3 seconds reading time
   setTimeout(function() {
     var b = document.getElementById('btnNext');
-    if (b) { b.disabled = false; b.style.opacity = '1'; }
+    if (b) { b.disabled = false; }
     var h = document.getElementById('transReadHint');
     if (h) { h.style.opacity = '0'; }
   }, 3000);

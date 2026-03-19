@@ -229,7 +229,11 @@ function getCurrentStep(){
 }
 
 // ── NAVIGATION ──────────────────────────────────────────────────────
+var _goNextLock = false;
 function goNext(){
+  if(_goNextLock) return;
+  _goNextLock = true;
+  setTimeout(function(){ _goNextLock = false; }, 450);
   var steps = getActiveSteps();
   var s = getCurrentStep();
   if(s.type==='welcome'||s.type==='transition'||s.type==='mini_results'||s.type==='complet_results'){
@@ -318,6 +322,7 @@ function render(){
   var btn=document.getElementById('btnNext');
   btn.style.display=isResults?'none':'';
   btn.className='btn btn-next';
+  btn.style.opacity='';
   var main=document.getElementById('main');
   var P=STATE.profile;
   var A=STATE.ans;
@@ -401,6 +406,16 @@ function resetState(){
 // ── INIT ────────────────────────────────────────────────────────────
 restoreState();
 render();
+document.querySelector('.main').scrollTop=0;
+
+// ── MOBILE: scroll focused input into view when keyboard opens ──────
+document.addEventListener('focusin', function(e){
+  if(e.target.matches('.text-input,.number-input,.email-input,.ta')){
+    setTimeout(function(){
+      try{ e.target.scrollIntoView({block:'center',behavior:'smooth'}); }catch(ex){}
+    }, 300);
+  }
+});
 </script>
 </body>
 </html>
