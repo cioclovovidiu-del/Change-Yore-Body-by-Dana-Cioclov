@@ -1153,6 +1153,10 @@ function buildPersonalLetter(letterContext) {
 
     var words = text.split(/\s+/).filter(function(w){ return w.length > 0; });
 
+    // Run audit if all layers available
+    var audit = _auditLetterInternal(picked, text, words.length, activeSections,
+      letterContext, calibration, profileSummary, languageTuning);
+
     return {
       text: text,
       sections: picked,
@@ -1164,10 +1168,262 @@ function buildPersonalLetter(letterContext) {
         toneLabel: (letterContext.tone && letterContext.tone.label) || 'unknown',
         calibration: calibration,
         profileSummary: profileSummary,
-        languageProfile: languageTuning
+        languageProfile: languageTuning,
+        audit: audit
       }
     };
   } catch(e) {
     return null;
   }
+}
+
+// ── AUDIT / TEST HARNESS ────────────────────────────────────────────
+// Deterministic internal validation layer.
+// Does NOT affect production flow — read-only diagnostic.
+
+function _auditLetterInternal(picked, text, wordCount, activeSections,
+    letterContext, calibration, profileSummary, languageTuning) {
+  var sections = LETTER_CONFIG.SECTIONS;
+  var required = LETTER_CONFIG.REQUIRED;
+
+  // ── 10 Boolean checks ──────────────────────────────────────────
+  // 1. hasAllRequired: all required sections present
+  var hasAllRequired = true;
+  for (var r = 0; r < required.length; r++) {
+    if (!picked[required[r]] || !picked[required[r]].text) { hasAllRequired = false; break; }
+  }
+
+  // 2. meetsMinSections: active sections >= MIN_VALID_SECTIONS
+  var meetsMinSections = activeSections.length >= LETTER_CONFIG.MIN_VALID_SECTIONS;
+
+  // 3. wordCountInRange
+  var wordCountInRange = wordCount >= LETTER_CONFIG.WORD_MIN && wordCount <= LETTER_CONFIG.WORD_MAX;
+
+  // 4. charCountOk
+  var charCountOk = (text || '').length >= LETTER_CONFIG.CHAR_MIN;
+
+  // 5. noPlaceholderLeaks: no [Prenume] left in text
+  var noPlaceholderLeaks = (text || '').indexOf('[Prenume]') === -1;
+
+  // 6. toneConsistent: tone label matches calibration direction
+  var toneConsistent = _checkToneCalibrationConsistency(letterContext.tone, calibration);
+
+  // 7. calibrationValid: all calibration levels in 1-3
+  var calibrationValid = _checkCalibrationBounds(calibration);
+
+  // 8. profileSummaryValid: all levels present and valid
+  var profileSummaryValid = _checkProfileSummaryValid(profileSummary);
+
+  // 9. languageTuningValid: all fields present
+  var languageTuningValid = _checkLanguageTuningValid(languageTuning);
+
+  // 10. noAdjacentDuplicates: no two adjacent sections share opener
+  var noAdjacentDuplicates = _checkNoAdjacentDuplicates(picked, sections);
+
+  var checks = {
+    hasAllRequired: hasAllRequired,
+    meetsMinSections: meetsMinSections,
+    wordCountInRange: wordCountInRange,
+    charCountOk: charCountOk,
+    noPlaceholderLeaks: noPlaceholderLeaks,
+    toneConsistent: toneConsistent,
+    calibrationValid: calibrationValid,
+    profileSummaryValid: profileSummaryValid,
+    languageTuningValid: languageTuningValid,
+    noAdjacentDuplicates: noAdjacentDuplicates
+  };
+
+  // ── 8 Diagnostic stats ─────────────────────────────────────────
+  var fragmentIds = [];
+  var nullSections = [];
+  for (var s = 0; s < sections.length; s++) {
+    if (picked[sections[s]] && picked[sections[s]].id) {
+      fragmentIds.push(picked[sections[s]].id);
+    } else {
+      nullSections.push(sections[s]);
+    }
+  }
+
+  // Max overlap between any adjacent pair
+  var maxOverlap = 0;
+  var prevText = '';
+  for (var o = 0; o < sections.length; o++) {
+    if (!picked[sections[o]] || !picked[sections[o]].text) continue;
+    var curText = picked[sections[o]].text;
+    if (prevText) {
+      var ov = _wordOverlap(prevText, curText);
+      if (ov > maxOverlap) maxOverlap = ov;
+    }
+    prevText = curText;
+  }
+
+  var stats = {
+    totalFragments: fragmentIds.length,
+    nullSections: nullSections,
+    fragmentIds: fragmentIds,
+    maxAdjacentOverlap: Math.round(maxOverlap * 100) / 100,
+    calibrationLabel: calibration.label,
+    profileLabel: profileSummary.profileLabel,
+    languageLabel: languageTuning.label,
+    route: (letterContext.routeData && letterContext.routeData.route) || 'GENERAL'
+  };
+
+  // ── ok = all checks pass ───────────────────────────────────────
+  var ok = true;
+  for (var k in checks) {
+    if (checks.hasOwnProperty(k) && !checks[k]) { ok = false; break; }
+  }
+
+  return { ok: ok, checks: checks, stats: stats };
+}
+
+// ── Audit helper: tone ↔ calibration consistency ────────────────────
+function _checkToneCalibrationConsistency(tone, cal) {
+  if (!tone || !cal) return false;
+  // Protective tone should never have high push
+  if (tone.vulnerability === 'protective' && cal.pushLevel >= 3) return false;
+  // Direct tone should never have high softness + low direction
+  if (tone.vulnerability === 'direct' && cal.softnessLevel >= 3 && cal.directionLevel <= 1) return false;
+  // Gentle pace should have direction ≤ 2
+  if (tone.pace === 'gentle' && cal.directionLevel > 2) return false;
+  return true;
+}
+
+// ── Audit helper: calibration bounds ────────────────────────────────
+function _checkCalibrationBounds(cal) {
+  if (!cal) return false;
+  var fields = ['softnessLevel', 'directionLevel', 'pushLevel', 'reassuranceLevel', 'structureLevel'];
+  for (var i = 0; i < fields.length; i++) {
+    var v = cal[fields[i]];
+    if (typeof v !== 'number' || v < 1 || v > 3) return false;
+  }
+  return typeof cal.label === 'string' && cal.label.length > 0;
+}
+
+// ── Audit helper: profile summary valid ─────────────────────────────
+function _checkProfileSummaryValid(ps) {
+  if (!ps) return false;
+  var levels = ['stressLevel', 'hormonalLevel', 'metabolicPressureLevel', 'cautionLevel', 'energyPressureLevel'];
+  var valid = ['low', 'moderate', 'high'];
+  for (var i = 0; i < levels.length; i++) {
+    var found = false;
+    for (var j = 0; j < valid.length; j++) {
+      if (ps[levels[i]] === valid[j]) { found = true; break; }
+    }
+    if (!found) return false;
+  }
+  return typeof ps.dominantChallenge === 'string' && ps.dominantChallenge.length > 0;
+}
+
+// ── Audit helper: language tuning valid ─────────────────────────────
+function _checkLanguageTuningValid(lt) {
+  if (!lt) return false;
+  if (typeof lt.warmthLevel !== 'number' || lt.warmthLevel < 1 || lt.warmthLevel > 3) return false;
+  if (typeof lt.firmnessLevel !== 'number' || lt.firmnessLevel < 1 || lt.firmnessLevel > 3) return false;
+  var styles = ['pacingStyle', 'reassuranceStyle', 'actionStyle', 'vocabularyStyle'];
+  for (var i = 0; i < styles.length; i++) {
+    if (typeof lt[styles[i]] !== 'string' || lt[styles[i]].length === 0) return false;
+  }
+  return typeof lt.label === 'string' && lt.label.length > 0;
+}
+
+// ── Audit helper: no adjacent opener duplication ────────────────────
+function _checkNoAdjacentDuplicates(picked, sections) {
+  var prevOpener = '';
+  for (var i = 0; i < sections.length; i++) {
+    if (!picked[sections[i]] || !picked[sections[i]].text) continue;
+    var opener = _extractOpener(picked[sections[i]].text);
+    if (opener && prevOpener && opener === prevOpener) return false;
+    if (opener) prevOpener = opener;
+  }
+  return true;
+}
+
+// ── PUBLIC AUDIT API ────────────────────────────────────────────────
+// Standalone function for testing: runs the full letter pipeline + audit.
+// Returns { ok, checks, stats } or { ok: false, error: string }
+
+function auditPersonalLetter(letterContext) {
+  if (!letterContext) return { ok: false, error: 'no_context', checks: {}, stats: {} };
+
+  try {
+    var result = buildPersonalLetter(letterContext);
+    if (!result) return { ok: false, error: 'letter_build_failed', checks: {}, stats: {} };
+    if (!result.meta || !result.meta.audit) return { ok: false, error: 'audit_missing', checks: {}, stats: {} };
+    return result.meta.audit;
+  } catch(e) {
+    return { ok: false, error: 'exception: ' + (e.message || 'unknown'), checks: {}, stats: {} };
+  }
+}
+
+// ── DEV HARNESS: Synthetic Profile Generator ────────────────────────
+// Generates deterministic test profiles for all 6 routes.
+// Returns array of { label, letterContext } for batch testing.
+
+function _generateSyntheticProfiles() {
+  var routes = ['POSTPARTUM', 'DIVORCE', 'HORMONAL', 'BURNOUT', 'LOSS', 'GENERAL'];
+  var profiles = [];
+
+  for (var r = 0; r < routes.length; r++) {
+    var route = routes[r];
+
+    // Base profile per route (moment: 0=PP,1=DIV,2=HOR,3=BURN,4=LOSS,5=GEN)
+    var momentMap = { POSTPARTUM:0, DIVORCE:1, HORMONAL:2, BURNOUT:3, LOSS:4, GENERAL:5 };
+    var P = { sex: 'F', age: 32, height: 165, weight: 72, targetWeight: 62, activity: 2, moment: momentMap[route] };
+    if (route === 'POSTPARTUM') { P.postpartum = true; P.age = 29; }
+    if (route === 'DIVORCE') { P.divorce = true; P.age = 37; }
+    if (route === 'HORMONAL') { P.hormonal = true; P.age = 44; }
+    if (route === 'BURNOUT') { P.age = 35; }
+    if (route === 'LOSS') { P.loss = true; P.age = 40; }
+
+    // Base answers — moderate stress, moderate activity
+    var A = {
+      q5: 1, q6: 1, q8: 2, q9: [0,1], q10: [0], q12: [0,1], q13: 2,
+      q14: 2, q15: 1, q16: 2, q17: 1, q18: [0], q19: 2, q20: [0], q21: 7
+    };
+
+    // Route-specific answer adjustments
+    if (route === 'BURNOUT') { A.q5 = 3; A.q6 = 3; A.q8 = 1; A.q21 = 5; }
+    if (route === 'LOSS') { A.q5 = 2; A.q21 = 4; A.q15 = 0; }
+    if (route === 'POSTPARTUM') { A.q5 = 3; A.q8 = 1; }
+    if (route === 'HORMONAL') { A.q14 = 3; }
+
+    var signals = (typeof interpretSignals === 'function') ? interpretSignals(P, A) : {};
+    var routeData = (typeof resolveRoute === 'function') ? resolveRoute(P, signals) : { route: route };
+    var stress = (typeof calcStressScore === 'function') ? calcStressScore(A) : 50;
+    var hormonal = (typeof calcHormonalScore === 'function') ? calcHormonalScore(P, A) : 40;
+    var scores = { stress: stress, hormonal: hormonal };
+    var metaProf = (typeof getMetabolicProfile === 'function') ? getMetabolicProfile(P, A) : null;
+    var tags = (typeof getSafetyTags === 'function') ? getSafetyTags(P, signals) : [];
+    var tone = resolveToneProfile(P, signals, routeData, scores);
+    var ctx = buildPersonalLetterContext(P, signals, routeData, scores, metaProf, tags, A, {}, tone);
+
+    profiles.push({ label: route, letterContext: ctx });
+  }
+
+  return profiles;
+}
+
+// ── DEV HARNESS: Batch Audit ────────────────────────────────────────
+// Runs audit on all 6 synthetic profiles. Returns summary.
+// Usage: var results = runLetterAuditBatch();
+
+function runLetterAuditBatch() {
+  var profiles = _generateSyntheticProfiles();
+  var results = [];
+  var allOk = true;
+
+  for (var i = 0; i < profiles.length; i++) {
+    var audit = auditPersonalLetter(profiles[i].letterContext);
+    if (!audit.ok) allOk = false;
+    results.push({
+      route: profiles[i].label,
+      ok: audit.ok,
+      error: audit.error || null,
+      checks: audit.checks,
+      stats: audit.stats
+    });
+  }
+
+  return { allOk: allOk, results: results };
 }
