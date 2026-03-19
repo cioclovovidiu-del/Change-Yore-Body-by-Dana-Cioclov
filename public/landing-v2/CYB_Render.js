@@ -103,11 +103,23 @@ function renderGdprEmail(s, P, btn) {
   '</div>';
 }
 
+function _unlockCta(containerId, hintId, delay) {
+  setTimeout(function() {
+    var c = document.getElementById(containerId);
+    if (c) { c.style.opacity = '1'; c.style.pointerEvents = 'auto'; }
+    var h = document.getElementById(hintId);
+    if (h) { h.style.opacity = '0'; }
+  }, delay);
+}
+
 function renderMiniResults(s, P, A, btn, resetHtml) {
   document.getElementById('btnBack').style.visibility = 'hidden';
   btn.style.display = 'none';
 
   if (!STATE._miniResultsTracked) { STATE._miniResultsTracked = true; try { gtag('event', 'mini_complete', {event_category: 'funnel', route: COPY.route.get(P.moment), bmi: calcBMI(P.weight, P.height).toFixed(1)}); fbq('track', 'Lead'); } catch(e) {} }
+
+  // Lock CTA area for 2 seconds to ensure message is read
+  setTimeout(function() { _unlockCta('miniCtaZone', 'miniReadHint', 0); }, 2000);
 
   var _signals = interpretSignals(P, {});
   var _resolved = resolveRoute(P, _signals);
@@ -166,7 +178,8 @@ function renderMiniResults(s, P, A, btn, resetHtml) {
       '<div class="result-card" style="font-size:0.88rem;color:rgba(255,255,255,0.6);line-height:1.8">' + _resText + '</div>' +
     '</div>' +
     '<div class="free-items">' + R.freeItems.map(function(i) { return '<div class="free-item"><span class="check">✓</span><p>' + i + '</p></div>' }).join('') + '</div>' +
-    '<div style="margin:28px 0;padding:24px;border-radius:16px;background:linear-gradient(135deg,rgba(42,165,160,0.08),rgba(201,168,76,0.06));border:1px solid rgba(201,168,76,0.15);text-align:center">' +
+    '<div id="miniReadHint" style="text-align:center;font-size:0.78rem;color:var(--teal-glow);font-style:italic;margin-bottom:10px;transition:opacity 0.4s">Citește mesajul înainte să continui...</div>' +
+    '<div id="miniCtaZone" style="opacity:0.5;pointer-events:none;transition:opacity 0.5s;margin:28px 0;padding:24px;border-radius:16px;background:linear-gradient(135deg,rgba(42,165,160,0.08),rgba(201,168,76,0.06));border:1px solid rgba(201,168,76,0.15);text-align:center">' +
       '<h3 style="font-family:var(--serif);font-size:1.3rem;color:white;margin-bottom:8px">' + U.heading + '</h3>' +
       '<p style="font-size:0.85rem;color:var(--text);margin-bottom:16px;line-height:1.7">' + U.body + '</p>' +
       '<button class="btn btn-next" style="margin-top:14px;width:100%;padding:14px 28px;font-size:0.95rem" onclick="startComplet()">Deblochează analiza ta completă →</button>' +
@@ -206,7 +219,15 @@ function renderMiniResults(s, P, A, btn, resetHtml) {
 
 function renderTransition(s, P, A, btn) {
   btn.textContent = COPY.ui.buttons.next;
-  btn.disabled = false;
+  btn.disabled = true;
+  btn.style.opacity = '0.5';
+  // Unlock NEXT after 3 seconds reading time
+  setTimeout(function() {
+    var b = document.getElementById('btnNext');
+    if (b) { b.disabled = false; b.style.opacity = '1'; }
+    var h = document.getElementById('transReadHint');
+    if (h) { h.style.opacity = '0'; }
+  }, 3000);
   var bmiT = calcBMI(P.weight, P.height);
   var miniHTML = '';
   if (s.miniResult) {
@@ -227,6 +248,7 @@ function renderTransition(s, P, A, btn) {
     '<div class="block-tag ' + s.blockColor + '">' + s.block + '</div>' +
     '<h2>' + s.title + '</h2>' +
     '<p>' + _tBody + '</p>' + miniHTML +
+    '<div id="transReadHint" style="text-align:center;font-size:0.78rem;color:var(--teal-glow);font-style:italic;margin-top:14px;transition:opacity 0.4s">Citește mesajul înainte să continui...</div>' +
   '</div></div>';
 }
 
@@ -292,6 +314,9 @@ function renderCompletResults(s, P, A, btn, resetHtml) {
     STATE._completEmailSent = true;
     try { fetch('/api/send-email', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({type: 'complet', profile: STATE.profile, ans: STATE.ans})}).catch(function() {}); } catch(e) {}
   }
+
+  // Lock CTA area for 3.5 seconds to ensure message is read
+  setTimeout(function() { _unlockCta('completCtaZone', 'completReadHint', 0); }, 3500);
 
   var _cSig = interpretSignals(P, A);
   var _cRoute = resolveRoute(P, _cSig);
@@ -389,7 +414,8 @@ function renderCompletResults(s, P, A, btn, resetHtml) {
       '<p style="font-size:0.88rem;color:var(--text);line-height:1.8;margin-bottom:12px">' + _cResText + '</p>' +
       '<p style="margin-top:16px;font-size:0.88rem;font-style:italic;color:var(--teal-glow)">' + CR.finalQuote + '</p>' +
     '</div>' +
-    '<div style="text-align:center;padding:28px 20px;margin-top:20px;border-radius:16px;background:linear-gradient(135deg,rgba(42,165,160,0.08),rgba(201,168,76,0.06));border:1px solid rgba(201,168,76,0.15)">' +
+    '<div id="completReadHint" style="text-align:center;font-size:0.78rem;color:var(--teal-glow);font-style:italic;margin-bottom:10px;transition:opacity 0.4s">Citește mesajul înainte să continui...</div>' +
+    '<div id="completCtaZone" style="opacity:0.5;pointer-events:none;transition:opacity 0.5s;text-align:center;padding:28px 20px;margin-top:20px;border-radius:16px;background:linear-gradient(135deg,rgba(42,165,160,0.08),rgba(201,168,76,0.06));border:1px solid rgba(201,168,76,0.15)">' +
       '<h3 style="font-family:var(--serif);font-size:1.3rem;color:white;margin-bottom:8px">' + CR.ctaHeading + '</h3>' +
       '<p style="font-size:0.85rem;color:var(--text);line-height:1.7;margin-bottom:12px">' + CR.ctaBody + '</p>' +
       '<p style="font-size:0.72rem;color:var(--teal-glow);font-style:italic;opacity:0.7;line-height:1.5;margin-bottom:18px">Cu cât începi mai repede, cu atât corectăm mai repede ce te blochează acum.</p>' +
