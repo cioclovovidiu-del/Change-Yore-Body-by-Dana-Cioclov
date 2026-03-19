@@ -2120,3 +2120,63 @@ function runPersonalLetterReleaseGate() {
     details: details
   };
 }
+
+// ── INTERNAL API CONTRACT ───────────────────────────────────────────
+// Centralized set of approved entry points for Personal Letter subsystem.
+// All external/render code should use these. Private helpers are internal.
+
+var PERSONAL_LETTER_API = {
+  version: PERSONAL_LETTER_VERSION,
+  build: buildPersonalLetter,
+  buildContext: buildPersonalLetterContext,
+  audit: auditPersonalLetter,
+  snapshot: createLetterSnapshot,
+  compareSnapshots: compareLetterSnapshots,
+  runBaseline: runLetterSnapshotBaseline,
+  runEdgeCases: runLetterEdgeCaseMatrix,
+  runReleaseGate: runPersonalLetterReleaseGate,
+  getPolicy: getPersonalLetterPolicy,
+  resolveState: resolvePersonalLetterState,
+  getDiagnostics: buildPersonalLetterDiagnostics,
+  canUse: canUsePersonalLetter
+};
+
+// Contract self-check: verifies all required API members exist and are callable.
+function checkPersonalLetterContract() {
+  var required = [
+    { name: 'build', type: 'function' },
+    { name: 'buildContext', type: 'function' },
+    { name: 'audit', type: 'function' },
+    { name: 'snapshot', type: 'function' },
+    { name: 'compareSnapshots', type: 'function' },
+    { name: 'runBaseline', type: 'function' },
+    { name: 'runEdgeCases', type: 'function' },
+    { name: 'runReleaseGate', type: 'function' },
+    { name: 'getPolicy', type: 'function' },
+    { name: 'resolveState', type: 'function' },
+    { name: 'getDiagnostics', type: 'function' },
+    { name: 'canUse', type: 'function' },
+    { name: 'version', type: 'string' }
+  ];
+
+  var missing = [];
+  var invalid = [];
+  for (var i = 0; i < required.length; i++) {
+    var r = required[i];
+    if (PERSONAL_LETTER_API[r.name] === undefined) {
+      missing.push(r.name);
+    } else if (typeof PERSONAL_LETTER_API[r.name] !== r.type) {
+      invalid.push({ name: r.name, expected: r.type, actual: typeof PERSONAL_LETTER_API[r.name] });
+    }
+  }
+
+  var ok = missing.length === 0 && invalid.length === 0;
+  return {
+    ok: ok,
+    version: PERSONAL_LETTER_API.version || 'unknown',
+    totalMembers: required.length,
+    presentMembers: required.length - missing.length,
+    missing: missing,
+    invalid: invalid
+  };
+}
