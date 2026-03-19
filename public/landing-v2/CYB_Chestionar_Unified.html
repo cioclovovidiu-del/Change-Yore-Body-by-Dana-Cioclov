@@ -234,8 +234,10 @@ function goNext(){
     // handled by button
   }
   if(s.type==='welcome'){try{gtag('event','questionnaire_start',{event_category:'funnel'});fbq('trackCustom','QuestionnaireStart');}catch(e){}}
+  if(s.type==='gdpr_email'&&STATE.profile.email&&STATE.profile.email.includes('@')){try{gtag('event','email_provided',{event_category:'funnel',has_email:true});fbq('trackCustom','EmailProvided',{has_email:true});}catch(e){}}
   if(STATE.step < steps.length-1){
     STATE.step++;
+    if(STATE.phase==='MINI'){var ns=steps[STATE.step];try{gtag('event','mini_step',{event_category:'funnel',step_id:ns.id,step_index:STATE.step});fbq('trackCustom','MiniStep',{step_id:ns.id,step_index:STATE.step});}catch(e){}}
     render();
     document.querySelector('.main').scrollTop=0;
   }
