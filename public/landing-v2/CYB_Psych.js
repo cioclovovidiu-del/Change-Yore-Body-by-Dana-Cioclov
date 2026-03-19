@@ -42,6 +42,59 @@ function canUsePersonalLetter(letterContext) {
   return getPersonalLetterPolicy(letterContext).allowed;
 }
 
+// ── DIAGNOSTIC REASON CODES ─────────────────────────────────────────
+var LETTER_DIAG = {
+  POLICY_BLOCKED: 'policy_blocked',
+  BUILD_SUCCESS: 'build_success',
+  VALIDATION_FAILED: 'validation_failed',
+  MISSING_REQUIRED_SECTIONS: 'missing_required_sections',
+  WORD_RANGE_FAILED: 'word_range_failed',
+  CHAR_MIN_FAILED: 'char_min_failed',
+  COMPOSE_FAILED: 'compose_failed',
+  EXCEPTION: 'exception',
+  FALLBACK_CALIBRATION: 'fallback_calibration_default',
+  FALLBACK_PROFILE: 'fallback_profile_default',
+  FALLBACK_LANGUAGE: 'fallback_language_default'
+};
+
+// Diagnostic builder — works for both success and null paths.
+function buildPersonalLetterDiagnostics(ctx, result, policy, buildDetail) {
+  policy = policy || getPersonalLetterPolicy(ctx);
+  buildDetail = buildDetail || {};
+  var succeeded = result !== null && typeof result === 'object' && typeof result.text === 'string';
+
+  var route = 'unknown';
+  if (succeeded && result.meta) route = result.meta.route || 'GENERAL';
+  else if (ctx && ctx.routeData) route = ctx.routeData.route || 'unknown';
+
+  var fallbackReasons = [];
+  if (buildDetail.usedDefaultCalibration) fallbackReasons.push(LETTER_DIAG.FALLBACK_CALIBRATION);
+  if (buildDetail.usedDefaultProfile) fallbackReasons.push(LETTER_DIAG.FALLBACK_PROFILE);
+  if (buildDetail.usedDefaultLanguage) fallbackReasons.push(LETTER_DIAG.FALLBACK_LANGUAGE);
+
+  var outcome = !policy.allowed ? LETTER_DIAG.POLICY_BLOCKED :
+    succeeded ? LETTER_DIAG.BUILD_SUCCESS :
+    buildDetail.reason || LETTER_DIAG.VALIDATION_FAILED;
+
+  return {
+    policyAllowed: policy.allowed,
+    policyReason: policy.reason,
+    featureEnabled: policy.featureEnabled,
+    route: route,
+    buildAttempted: policy.allowed,
+    buildSucceeded: succeeded,
+    returnedNull: !succeeded,
+    outcome: outcome,
+    fallbackUsed: fallbackReasons.length > 0,
+    fallbackReasons: fallbackReasons,
+    auditOk: (succeeded && result.meta && result.meta.audit) ? result.meta.audit.ok : null,
+    version: (typeof PERSONAL_LETTER_VERSION !== 'undefined') ? PERSONAL_LETTER_VERSION : 'unknown',
+    calibrationLabel: (succeeded && result.meta && result.meta.calibration) ? result.meta.calibration.label : (buildDetail.calibrationLabel || null),
+    profileLabel: (succeeded && result.meta && result.meta.profileSummary) ? result.meta.profileSummary.profileLabel : (buildDetail.profileLabel || null),
+    languageLabel: (succeeded && result.meta && result.meta.languageProfile) ? result.meta.languageProfile.label : (buildDetail.languageLabel || null)
+  };
+}
+
 // ── TONE PROFILE ────────────────────────────────────────────────────
 
 function resolveToneProfile(profile, signals, routeData, scores) {
@@ -1159,28 +1212,69 @@ function _validateLetterText(text) {
 
 function buildPersonalLetter(letterContext) {
   var policy = getPersonalLetterPolicy(letterContext);
-  if (!policy.allowed) return null;
+  if (!policy.allowed) {
+    // Store diagnostics on context for null-path inspection
+    if (letterContext && typeof letterContext === 'object') {
+      letterContext._lastDiagnostics = buildPersonalLetterDiagnostics(letterContext, null, policy, { reason: LETTER_DIAG.POLICY_BLOCKED });
+    }
+    return null;
+  }
+
+  var _bd = {}; // build detail tracker
 
   try {
     // Compute calibration, profile summary, and language tuning
     var calibration = calibrateLetterProfile(letterContext);
     letterContext._calibration = calibration;
+    _bd.calibrationLabel = calibration.label;
+    _bd.usedDefaultCalibration = (calibration.label === 's2d2p2r2st2');
+
     var profileSummary = buildProfileSummary(letterContext);
     letterContext._profileSummary = profileSummary;
+    _bd.profileLabel = profileSummary.profileLabel;
+    _bd.usedDefaultProfile = (profileSummary.profileLabel === 'st:m hr:m mt:m ct:l en:m');
+
     var languageTuning = buildLanguageTuning(letterContext.tone, calibration, profileSummary);
     letterContext._languageTuning = languageTuning;
+    _bd.languageLabel = languageTuning.label;
+    _bd.usedDefaultLanguage = (languageTuning.label === 'w2f2-sbcb');
 
     var picked = pickLetterFragments(letterContext);
 
     // Content quality gate (uses tone + calibration rules)
     picked = _validateLetterContent(picked, letterContext);
-    if (!picked) return null;
+    if (!picked) {
+      _bd.reason = LETTER_DIAG.MISSING_REQUIRED_SECTIONS;
+      letterContext._lastDiagnostics = buildPersonalLetterDiagnostics(letterContext, null, policy, _bd);
+      return null;
+    }
 
     var text = composePersonalLetter(picked, letterContext);
 
-    // Final text validation
+    // Final text validation — track specific failure reason
+    if (typeof text !== 'string') {
+      _bd.reason = LETTER_DIAG.COMPOSE_FAILED;
+      letterContext._lastDiagnostics = buildPersonalLetterDiagnostics(letterContext, null, policy, _bd);
+      return null;
+    }
+    var rawText = text.replace(/\[Prenume\]/g, '');
+    var rawWords = rawText.split(/\s+/).filter(function(w){ return w.length > 0; });
+    if (rawWords.length < LETTER_CONFIG.WORD_MIN || rawWords.length > LETTER_CONFIG.WORD_MAX) {
+      _bd.reason = LETTER_DIAG.WORD_RANGE_FAILED;
+      letterContext._lastDiagnostics = buildPersonalLetterDiagnostics(letterContext, null, policy, _bd);
+    }
+    if (rawText.length < LETTER_CONFIG.CHAR_MIN) {
+      _bd.reason = LETTER_DIAG.CHAR_MIN_FAILED;
+      letterContext._lastDiagnostics = buildPersonalLetterDiagnostics(letterContext, null, policy, _bd);
+    }
+
     text = _validateLetterText(text);
-    if (!text) return null;
+    if (!text) {
+      // _bd.reason already set above if word/char check failed
+      if (!_bd.reason) _bd.reason = LETTER_DIAG.VALIDATION_FAILED;
+      letterContext._lastDiagnostics = buildPersonalLetterDiagnostics(letterContext, null, policy, _bd);
+      return null;
+    }
 
     // Count active sections for meta
     var activeSections = [];
@@ -1195,7 +1289,7 @@ function buildPersonalLetter(letterContext) {
     var audit = _auditLetterInternal(picked, text, words.length, activeSections,
       letterContext, calibration, profileSummary, languageTuning);
 
-    return {
+    var result = {
       text: text,
       sections: picked,
       meta: {
@@ -1207,10 +1301,20 @@ function buildPersonalLetter(letterContext) {
         calibration: calibration,
         profileSummary: profileSummary,
         languageProfile: languageTuning,
-        audit: audit
+        audit: audit,
+        diagnostics: buildPersonalLetterDiagnostics(letterContext, null, policy, _bd)
       }
     };
+    // Finalize diagnostics with actual result
+    result.meta.diagnostics = buildPersonalLetterDiagnostics(letterContext, result, policy, _bd);
+    letterContext._lastDiagnostics = result.meta.diagnostics;
+
+    return result;
   } catch(e) {
+    _bd.reason = LETTER_DIAG.EXCEPTION;
+    if (letterContext && typeof letterContext === 'object') {
+      letterContext._lastDiagnostics = buildPersonalLetterDiagnostics(letterContext, null, policy, _bd);
+    }
     return null;
   }
 }
@@ -1453,6 +1557,7 @@ function runLetterAuditBatch() {
   var policyAllowed = 0;
   var policyBlocked = 0;
   var policyReasons = [];
+  var diagCounts = {};
 
   for (var i = 0; i < profiles.length; i++) {
     var pol = getPersonalLetterPolicy(profiles[i].letterContext);
@@ -1462,12 +1567,19 @@ function runLetterAuditBatch() {
     }
     var audit = auditPersonalLetter(profiles[i].letterContext);
     if (!audit.ok) allOk = false;
+
+    // Collect diagnostics from context or result
+    var diag = profiles[i].letterContext._lastDiagnostics || null;
+    var outcome = diag ? diag.outcome : (pol.allowed ? 'unknown' : LETTER_DIAG.POLICY_BLOCKED);
+    diagCounts[outcome] = (diagCounts[outcome] || 0) + 1;
+
     results.push({
       route: profiles[i].label,
       ok: audit.ok,
       error: audit.error || null,
       policyAllowed: pol.allowed,
       policyReason: pol.reason,
+      diagnosticOutcome: outcome,
       checks: audit.checks,
       stats: audit.stats
     });
@@ -1476,7 +1588,8 @@ function runLetterAuditBatch() {
   return {
     allOk: allOk,
     results: results,
-    policy: { allowed: policyAllowed, blocked: policyBlocked, blockedReasons: policyReasons }
+    policy: { allowed: policyAllowed, blocked: policyBlocked, blockedReasons: policyReasons },
+    diagnostics: { outcomeCounts: diagCounts }
   };
 }
 
