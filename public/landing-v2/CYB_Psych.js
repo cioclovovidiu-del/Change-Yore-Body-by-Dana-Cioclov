@@ -2115,6 +2115,16 @@ function runPersonalLetterReleaseGate() {
     checks.contractIntact = false;
   }
 
+  // ── 9. Manifest validity ────────────────────────────────────────
+  try {
+    var manifest = checkPersonalLetterManifest();
+    details.manifest = manifest;
+    checks.manifestValid = manifest.ok === true;
+  } catch(e) {
+    details.manifest = { error: e.message || 'crash' };
+    checks.manifestValid = false;
+  }
+
   // ── Aggregate ───────────────────────────────────────────────────
   var allOk = true;
   for (var k in checks) {
@@ -2188,5 +2198,89 @@ function checkPersonalLetterContract() {
     presentMembers: required.length - missing.length,
     missing: missing,
     invalid: invalid
+  };
+}
+
+// ── SUBSYSTEM MANIFEST ──────────────────────────────────────────────
+// Single source of truth for Personal Letter subsystem boundary.
+
+var PERSONAL_LETTER_MANIFEST = {
+  name: 'PersonalLetter',
+  version: PERSONAL_LETTER_VERSION,
+  featureEnabled: PERSONAL_LETTER_ENABLED,
+  renderTargets: ['complet_results'],
+  states: [
+    LETTER_STATE.DISABLED,
+    LETTER_STATE.BLOCKED,
+    LETTER_STATE.INVALID,
+    LETTER_STATE.BUILT,
+    LETTER_STATE.EXCEPTION
+  ],
+  api: [
+    'build', 'buildContext', 'audit', 'snapshot', 'compareSnapshots',
+    'runBaseline', 'runEdgeCases', 'runReleaseGate', 'getPolicy',
+    'resolveState', 'getDiagnostics', 'canUse'
+  ],
+  validations: [
+    'auditBatch', 'snapshotBaseline', 'edgeCases', 'determinism',
+    'shapeValid', 'placeholderClean', 'routesValid', 'contractIntact'
+  ],
+  contracts: ['LETTER_CONFIG', 'LETTER_STATE', 'LETTER_DIAG', 'PERSONAL_LETTER_API'],
+  releaseGate: true
+};
+
+// Manifest self-check: verifies manifest consistency with actual subsystem.
+function checkPersonalLetterManifest() {
+  var errors = [];
+
+  // 1. Manifest exists and has required fields
+  if (typeof PERSONAL_LETTER_MANIFEST !== 'object') {
+    return { ok: false, errors: ['manifest_missing'] };
+  }
+  if (!PERSONAL_LETTER_MANIFEST.version) errors.push('no_version');
+  if (!PERSONAL_LETTER_MANIFEST.name) errors.push('no_name');
+
+  // 2. States align with LETTER_STATE
+  var stateVals = PERSONAL_LETTER_MANIFEST.states || [];
+  var actualStates = [LETTER_STATE.DISABLED, LETTER_STATE.BLOCKED, LETTER_STATE.INVALID, LETTER_STATE.BUILT, LETTER_STATE.EXCEPTION];
+  for (var s = 0; s < actualStates.length; s++) {
+    var found = false;
+    for (var si = 0; si < stateVals.length; si++) {
+      if (stateVals[si] === actualStates[s]) { found = true; break; }
+    }
+    if (!found) errors.push('missing_state:' + actualStates[s]);
+  }
+
+  // 3. API list aligns with PERSONAL_LETTER_API
+  var apiList = PERSONAL_LETTER_MANIFEST.api || [];
+  for (var a = 0; a < apiList.length; a++) {
+    if (typeof PERSONAL_LETTER_API[apiList[a]] === 'undefined') {
+      errors.push('api_not_found:' + apiList[a]);
+    }
+  }
+
+  // 4. Release gate availability
+  if (PERSONAL_LETTER_MANIFEST.releaseGate && typeof runPersonalLetterReleaseGate !== 'function') {
+    errors.push('release_gate_missing');
+  }
+
+  // 5. Contracts exist
+  var contractNames = PERSONAL_LETTER_MANIFEST.contracts || [];
+  var contractRefs = { LETTER_CONFIG: typeof LETTER_CONFIG, LETTER_STATE: typeof LETTER_STATE, LETTER_DIAG: typeof LETTER_DIAG, PERSONAL_LETTER_API: typeof PERSONAL_LETTER_API };
+  for (var c = 0; c < contractNames.length; c++) {
+    if (contractRefs[contractNames[c]] !== 'object') {
+      errors.push('contract_missing:' + contractNames[c]);
+    }
+  }
+
+  return {
+    ok: errors.length === 0,
+    name: PERSONAL_LETTER_MANIFEST.name,
+    version: PERSONAL_LETTER_MANIFEST.version,
+    stateCount: stateVals.length,
+    apiCount: apiList.length,
+    validationCount: (PERSONAL_LETTER_MANIFEST.validations || []).length,
+    contractCount: contractNames.length,
+    errors: errors
   };
 }
