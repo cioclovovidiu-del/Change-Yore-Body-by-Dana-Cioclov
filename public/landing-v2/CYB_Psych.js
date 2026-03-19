@@ -1534,3 +1534,225 @@ function runLetterSnapshotBaseline() {
 
   return { ok: allOk, total: snapshots.length, snapshots: snapshots };
 }
+
+// ── EDGE-CASE MATRIX ────────────────────────────────────────────────
+// Deterministic stress-test matrix for Personal Letter subsystem.
+// No UI impact. No render path cost. Offline validation only.
+
+function _buildEdgeCaseMatrix() {
+  // Moment map for route resolution
+  var MOM = { POSTPARTUM:0, DIVORCE:1, HORMONAL:2, BURNOUT:3, LOSS:4, GENERAL:5 };
+
+  // Helper: build a full valid context for a route with answer overrides
+  function _mkCtx(route, profileOverrides, answerOverrides, signalHints) {
+    var P = { sex:'F', age:32, height:165, weight:72, targetWeight:62, activity:2, moment:MOM[route] || 5 };
+    for (var pk in (profileOverrides || {})) { if (profileOverrides.hasOwnProperty(pk)) P[pk] = profileOverrides[pk]; }
+    var A = { q5:1, q6:1, q8:2, q9:[0,1], q10:[0], q12:[0,1], q13:2, q14:2, q15:1, q16:2, q17:1, q18:[0], q19:2, q20:[0], q21:7 };
+    for (var ak in (answerOverrides || {})) { if (answerOverrides.hasOwnProperty(ak)) A[ak] = answerOverrides[ak]; }
+    var sig = (typeof interpretSignals === 'function') ? interpretSignals(P, A) : (signalHints || {});
+    var rd = (typeof resolveRoute === 'function') ? resolveRoute(P, sig) : { route: route };
+    var stress = (typeof calcStressScore === 'function') ? calcStressScore(A) : 50;
+    var horm = (typeof calcHormonalScore === 'function') ? calcHormonalScore(P, A) : 40;
+    var scores = { stress: stress, hormonal: horm };
+    var metaProf = (typeof getMetabolicProfile === 'function') ? getMetabolicProfile(P, A) : null;
+    var tags = (typeof getSafetyTags === 'function') ? getSafetyTags(P, sig) : [];
+    var tone = resolveToneProfile(P, sig, rd, scores);
+    return buildPersonalLetterContext(P, sig, rd, scores, metaProf, tags, A, {}, tone);
+  }
+
+  return [
+    // EC1: null context
+    { id: 'ec_null', ctx: null, expectsLetter: false, notes: ['null input — must return null safely'] },
+
+    // EC2: empty object context
+    { id: 'ec_empty_obj', ctx: {}, expectsLetter: false, notes: ['empty object — no route, no signals'] },
+
+    // EC3: missing scores (scores set to empty)
+    { id: 'ec_no_scores', ctx: (function(){
+      var c = _mkCtx('GENERAL', {}, {});
+      c.scores = {};
+      return c;
+    })(), expectsLetter: true, notes: ['missing scores — defaults should activate'] },
+
+    // EC4: missing safety tags (null)
+    { id: 'ec_no_tags', ctx: (function(){
+      var c = _mkCtx('GENERAL', {}, {});
+      c.safetyTags = null;
+      return c;
+    })(), expectsLetter: true, notes: ['null safety tags — should fallback safely'] },
+
+    // EC5: minimal viable context — bare minimum fields
+    { id: 'ec_minimal', ctx: (function(){
+      return {
+        profile: { sex:'F', age:30, moment:5 },
+        signals: {},
+        routeData: { route:'GENERAL' },
+        scores: { stress:30, hormonal:20 },
+        metabolicProfile: null,
+        safetyTags: [],
+        answers: { q5:1, q6:1, q8:2, q9:[0], q10:[0], q12:[0], q13:2, q14:1, q15:1, q16:2, q17:0, q18:[0], q19:2, q20:[0], q21:7 },
+        completion: {},
+        tone: { vulnerability:'direct', pace:'structured', motivation:'coaching', label:'direct-structured-coaching' },
+        derived: { hasLimitations:false, hasMedical:false, isEmotionalEater:false, manyDiets:false, lowWater:false, poorSleep:false, highStress:false, modStress:false, highHormonal:false, beginner:false, lowTime:false, highMotiv:false, lowMotiv:false }
+      };
+    })(), expectsLetter: true, notes: ['minimal viable — all defaults, GENERAL route'] },
+
+    // EC6: high stress + high readiness conflict
+    { id: 'ec_stress_readiness', ctx: _mkCtx('GENERAL', {}, { q5:3, q6:3, q21:10, q13:3, q8:3 }),
+      expectsLetter: true, notes: ['stress caps push despite high readiness'] },
+
+    // EC7: high shame + high motivation conflict
+    { id: 'ec_shame_motiv', ctx: _mkCtx('GENERAL', {}, { q15:0, q17:4, q21:10, q13:3 }),
+      expectsLetter: true, notes: ['shame reduces push despite high motivation'] },
+
+    // EC8: hormonal high + energy low
+    { id: 'ec_hormonal_energy', ctx: _mkCtx('HORMONAL', {}, { q14:3, q5:3, q8:1, q6:3 }),
+      expectsLetter: true, notes: ['hormonal route + exhaustion signals'] },
+
+    // EC9: protective route (LOSS) + high momentum answers
+    { id: 'ec_loss_momentum', ctx: _mkCtx('LOSS', { loss:true }, { q21:10, q13:3, q8:3 }),
+      expectsLetter: true, notes: ['LOSS route overrides momentum — softness floor'] },
+
+    // EC10: POSTPARTUM + overwhelmed + high shame
+    { id: 'ec_pp_overwhelm_shame', ctx: _mkCtx('POSTPARTUM', { postpartum:true }, { q5:3, q6:3, q8:0, q15:0, q17:4, q21:3 }),
+      expectsLetter: true, notes: ['triple protective signal stack'] },
+
+    // EC11: all zeros answers (extreme low)
+    { id: 'ec_all_zeros', ctx: _mkCtx('GENERAL', {}, { q5:0, q6:0, q8:0, q13:0, q14:0, q15:2, q16:0, q17:0, q19:0, q21:1 }),
+      expectsLetter: true, notes: ['minimal engagement — low everything'] },
+
+    // EC12: all max answers (extreme high)
+    { id: 'ec_all_max', ctx: _mkCtx('GENERAL', {}, { q5:3, q6:3, q8:3, q13:3, q14:3, q15:0, q16:3, q17:4, q19:3, q21:10 }),
+      expectsLetter: true, notes: ['max all signals — conflict resolution stress test'] },
+
+    // EC13: missing derived (force recalc path)
+    { id: 'ec_no_derived', ctx: (function(){
+      var c = _mkCtx('GENERAL', {}, {});
+      c.derived = null;
+      return c;
+    })(), expectsLetter: true, notes: ['null derived — calibration should use defaults'] },
+
+    // EC14: missing tone (force default tone path)
+    { id: 'ec_no_tone', ctx: (function(){
+      var c = _mkCtx('DIVORCE', { divorce:true }, {});
+      c.tone = null;
+      return c;
+    })(), expectsLetter: true, notes: ['null tone — calibration falls to defaults'] },
+
+    // EC15: BURNOUT + max stress + low motivation
+    { id: 'ec_burnout_extreme', ctx: _mkCtx('BURNOUT', {}, { q5:3, q6:3, q8:0, q21:2, q13:0, q15:0, q17:4 }),
+      expectsLetter: true, notes: ['extreme burnout — max protection expected'] }
+  ];
+}
+
+// ── EDGE-CASE RUNNER ────────────────────────────────────────────────
+
+function runLetterEdgeCaseMatrix() {
+  var matrix = _buildEdgeCaseMatrix();
+  var passed = 0;
+  var failed = 0;
+  var cases = [];
+
+  for (var i = 0; i < matrix.length; i++) {
+    var ec = matrix[i];
+    var caseResult = _runSingleEdgeCase(ec);
+    if (caseResult.ok) passed++; else failed++;
+    cases.push(caseResult);
+  }
+
+  return {
+    ok: failed === 0,
+    total: matrix.length,
+    passed: passed,
+    failed: failed,
+    cases: cases
+  };
+}
+
+function _runSingleEdgeCase(ec) {
+  var notes = (ec.notes || []).slice();
+  var result = null;
+  var crashed = false;
+
+  // 1. No crash
+  try {
+    result = buildPersonalLetter(ec.ctx);
+  } catch(e) {
+    crashed = true;
+    notes.push('CRASH: ' + (e.message || 'unknown'));
+  }
+
+  var hasLetter = result !== null && typeof result === 'object' && typeof result.text === 'string';
+  var auditOk = null;
+  var snapshot = null;
+  var ok = true;
+
+  // 2. Expectation: letter present/absent
+  if (ec.expectsLetter && !hasLetter) {
+    ok = false;
+    notes.push('FAIL: expected letter but got null');
+  }
+  if (!ec.expectsLetter && hasLetter) {
+    ok = false;
+    notes.push('FAIL: expected null but got letter');
+  }
+
+  // 3. Crash = fail
+  if (crashed) {
+    ok = false;
+  }
+
+  // 4. When letter exists: validate shape + meta + no placeholder leaks
+  if (hasLetter) {
+    // Shape
+    if (typeof result.sections !== 'object') { ok = false; notes.push('FAIL: sections not object'); }
+    if (!result.meta || typeof result.meta !== 'object') { ok = false; notes.push('FAIL: meta missing'); }
+
+    // No placeholder leaks
+    if (result.text.indexOf('[Prenume]') !== -1) { ok = false; notes.push('FAIL: placeholder leak'); }
+
+    // Meta integrity
+    if (result.meta) {
+      if (typeof result.meta.sectionCount !== 'number') { ok = false; notes.push('FAIL: sectionCount missing'); }
+      if (!result.meta.calibration) { ok = false; notes.push('FAIL: calibration missing'); }
+      if (!result.meta.profileSummary) { ok = false; notes.push('FAIL: profileSummary missing'); }
+      if (!result.meta.languageProfile) { ok = false; notes.push('FAIL: languageProfile missing'); }
+    }
+
+    // Audit
+    auditOk = (result.meta && result.meta.audit) ? result.meta.audit.ok : null;
+
+    // Snapshot
+    try { snapshot = createLetterSnapshot(result); } catch(e) { snapshot = null; }
+  }
+
+  // 5. Determinism: run again, compare
+  if (!crashed && ec.ctx !== null) {
+    try {
+      var result2 = buildPersonalLetter(ec.ctx);
+      var hasLetter2 = result2 !== null && typeof result2 === 'object' && typeof result2.text === 'string';
+      if (hasLetter !== hasLetter2) { ok = false; notes.push('FAIL: non-deterministic presence'); }
+      if (hasLetter && hasLetter2) {
+        var snap2 = createLetterSnapshot(result2);
+        if (snapshot && snap2) {
+          var cmp = compareLetterSnapshots(snapshot, snap2);
+          if (!cmp.equal) { ok = false; notes.push('FAIL: non-deterministic output'); }
+        }
+      }
+    } catch(e) {
+      // Second run crash is also a fail
+      ok = false;
+      notes.push('FAIL: second run crashed');
+    }
+  }
+
+  return {
+    id: ec.id,
+    ok: ok,
+    expectsLetter: ec.expectsLetter,
+    hasLetter: hasLetter,
+    auditOk: auditOk,
+    snapshot: snapshot,
+    notes: notes
+  };
+}
