@@ -487,6 +487,17 @@ function render(){
         '<div class="result-card" style="font-size:0.88rem;color:rgba(255,255,255,0.6);line-height:1.8">'+_resText+'</div>'+
       '</div>'+
       '<div class="free-items">'+R.freeItems.map(function(i){return '<div class="free-item"><span class="check">✓</span><p>'+i+'</p></div>'}).join('')+'</div>'+
+      '<div style="margin:28px 0;padding:24px;border-radius:16px;background:linear-gradient(135deg,rgba(42,165,160,0.08),rgba(201,168,76,0.06));border:1px solid rgba(201,168,76,0.15);text-align:center">'+
+        '<h3 style="font-family:var(--serif);font-size:1.3rem;color:white;margin-bottom:8px">'+U.heading+'</h3>'+
+        '<p style="font-size:0.85rem;color:var(--text);margin-bottom:16px;line-height:1.7">'+U.body+'</p>'+
+        '<button class="btn btn-next" style="margin-top:14px;width:100%;padding:14px 28px;font-size:0.95rem" onclick="startComplet()">Deblochează analiza ta completă →</button>'+
+        '<p style="margin-top:8px;font-size:0.75rem;color:var(--text);line-height:1.5">Îți deblocăm profilul metabolic, obstacolele principale și direcția ta personalizată.</p>'+
+        '<p style="margin-top:10px;font-size:0.72rem;color:var(--teal-glow);font-style:italic;opacity:0.7;line-height:1.5">Dacă simți că ți se potrivește, nu amâna — direcția corectă contează chiar de la început.</p>'+
+        '<div style="height:1px;background:rgba(255,255,255,0.06);margin:18px 0"></div>'+
+        '<a href="'+U.ctaDirectWhatsApp+'" target="_blank" rel="noopener" class="btn btn-gold" style="display:inline-block;text-decoration:none;margin-top:0;padding:12px 28px;font-size:0.88rem" onclick="try{gtag(\'event\',\'whatsapp_click\',{source:\'mini_results_direct\'});fbq(\'track\',\'Contact\');}catch(e){}">'+U.ctaDirectButton+'</a>'+
+        '<p style="margin-top:10px;font-size:0.75rem;color:var(--text)">'+U.ctaGroupBody+'</p>'+
+        '<a href="'+U.ctaGroupWhatsApp+'" target="_blank" rel="noopener" style="display:inline-block;margin-top:4px;font-size:0.75rem;color:rgba(37,211,102,0.7);text-decoration:underline;transition:color 0.2s" onclick="try{gtag(\'event\',\'whatsapp_click\',{source:\'mini_results_group\'});fbq(\'track\',\'Contact\');}catch(e){}">'+U.ctaGroupButton+'</a>'+
+      '</div>'+
       '<div class="result-section blurred-section">'+
         '<div class="blur-overlay"><div class="blur-lock">🔒</div><p>'+R.blurOverlay+'</p></div>'+
         '<div class="blurred-content">'+
@@ -506,13 +517,9 @@ function render(){
           '<div class="result-card"><div style="font-size:1.2rem;font-weight:600;color:var(--teal-glow)">'+ideal+'</div><div class="result-label">'+R.idealDesc(P.height)+'</div></div>'+
         '</div>'+
       '</div>'+
-      '<div class="upgrade-box">'+
-        '<h3>'+U.heading+'</h3><p>'+U.body+'</p>'+
+      '<div class="upgrade-box" style="margin:20px 0;padding:20px">'+
         '<div class="upgrade-plans">'+plansHtml+'</div>'+
-        '<p style="margin-top:16px;font-size:0.78rem;color:var(--text)">'+U.footer(COPY.route.get(P.moment))+'</p>'+
-        '<a href="'+U.ctaWhatsApp+'" target="_blank" rel="noopener" class="btn btn-next" style="display:inline-block;text-decoration:none;margin-top:14px;padding:12px 28px" onclick="try{gtag(\'event\',\'whatsapp_click\',{source:\'mini_results\'});fbq(\'track\',\'Contact\');}catch(e){}">'+U.ctaButton+'</a>'+
-        '<p style="margin-top:6px;font-size:0.75rem;color:var(--text)">'+U.ctaBody+'</p>'+
-        '<button class="btn btn-gold" style="margin-top:18px" onclick="startComplet()">Continuă cu chestionarul complet →</button>'+
+        '<p style="margin-top:12px;font-size:0.75rem;color:var(--text)">'+U.footer(COPY.route.get(P.moment))+'</p>'+
       '</div>'+
       resetHtml+
     '</div></div>';
@@ -693,8 +700,11 @@ function render(){
       '</div>'+
       '<div style="text-align:center;padding:28px 20px;margin-top:20px;border-radius:16px;background:linear-gradient(135deg,rgba(42,165,160,0.08),rgba(201,168,76,0.06));border:1px solid rgba(201,168,76,0.15)">'+
         '<h3 style="font-family:var(--serif);font-size:1.3rem;color:white;margin-bottom:8px">'+CR.ctaHeading+'</h3>'+
-        '<p style="font-size:0.85rem;color:var(--text);line-height:1.7;margin-bottom:18px">'+CR.ctaBody+'</p>'+
-        '<a href="'+CR.ctaWhatsApp+'" target="_blank" rel="noopener" class="btn btn-gold" style="display:inline-block;text-decoration:none;padding:14px 32px" onclick="try{gtag(\'event\',\'whatsapp_click\',{source:\'complet_results\'});fbq(\'track\',\'Contact\');}catch(e){}">'+CR.ctaButton+'</a>'+
+        '<p style="font-size:0.85rem;color:var(--text);line-height:1.7;margin-bottom:12px">'+CR.ctaBody+'</p>'+
+        '<p style="font-size:0.72rem;color:var(--teal-glow);font-style:italic;opacity:0.7;line-height:1.5;margin-bottom:18px">Cu cât începi mai repede, cu atât corectăm mai repede ce te blochează acum.</p>'+
+        '<a href="'+CR.ctaDirectWhatsApp+'" target="_blank" rel="noopener" class="btn btn-gold" style="display:inline-block;text-decoration:none;padding:14px 32px;font-size:0.95rem" onclick="try{gtag(\'event\',\'whatsapp_click\',{source:\'complet_results_direct\'});fbq(\'track\',\'Contact\');}catch(e){}">'+CR.ctaDirectButton+'</a>'+
+        '<p style="margin-top:14px;font-size:0.78rem;color:var(--text)">Sau intră în comunitatea CYB:</p>'+
+        '<a href="'+CR.ctaGroupWhatsApp+'" target="_blank" rel="noopener" style="display:inline-block;margin-top:6px;font-size:0.78rem;color:rgba(37,211,102,0.7);text-decoration:underline;transition:color 0.2s" onclick="try{gtag(\'event\',\'whatsapp_click\',{source:\'complet_results_group\'});fbq(\'track\',\'Contact\');}catch(e){}">'+CR.ctaGroupButton+'</a>'+
       '</div>'+
       resetHtml+
     '</div>';
