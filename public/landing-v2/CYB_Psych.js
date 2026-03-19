@@ -358,12 +358,35 @@ var LETTER_CONFIG = {
   // Priority conflict resolution order (higher index = higher priority)
   // When signals conflict, higher-priority signal wins
   PRIORITY_ORDER: {
-    overwhelm: 5,      // highest — always respected
-    shame: 4,           // second highest — reduces push
-    protective_route: 3,// route-level protection
-    structure_need: 2,  // structural preference
-    readiness: 1        // lowest — only applies if no conflicts above
-  }
+    route_tone: 6,       // absolute frame — never overridden
+    overwhelm: 5,        // highest signal — always respected
+    shame: 4,            // second highest — reduces push
+    protective_route: 3, // route-level protection
+    calibration: 2.5,    // calibration-level adjustments
+    structure_need: 2,   // structural preference
+    score_profile: 1.5,  // score/profile nuance — lowest layer
+    readiness: 1         // lowest — only applies if no conflicts above
+  },
+
+  // Profile/score-aware rules: applied AFTER calibration, lowest priority
+  // These add nuance but cannot override route tone or calibration
+  PROFILE_RULES: [
+    // High stress load → prefer gentle direction over structured
+    { check: function(ps){ return ps.stressLevel === 'high'; },
+      reject: 'dir_ambitious', fallback: 'dir_gentle', field: 'direction' },
+    // High hormonal pressure → prefer hormonal-aware pattern over general
+    { check: function(ps){ return ps.hormonalLevel === 'high'; },
+      reject: 'pat_general', fallback: 'pat_hormonal_weight', field: 'pattern' },
+    // High caution → prefer protective reframe
+    { check: function(ps){ return ps.cautionLevel === 'high'; },
+      reject: 'rfr_direct', fallback: 'rfr_protective', field: 'reframe' },
+    // High energy pressure → reject challenging action
+    { check: function(ps){ return ps.energyPressureLevel === 'high'; },
+      reject: 'act_challenging', fallback: 'act_general', field: 'soft_action' },
+    // High metabolic pressure → prefer cortisol/yoyo pattern awareness
+    { check: function(ps){ return ps.metabolicPressureLevel === 'high'; },
+      reject: 'pat_general', fallback: 'pat_cortisol', field: 'pattern' }
+  ]
 };
 
 // ── LETTER CONTEXT BUILDER ──────────────────────────────────────────
@@ -506,6 +529,98 @@ function calibrateLetterProfile(letterContext) {
 
 function _defaultCalibration() {
   return { softnessLevel: 2, directionLevel: 2, pushLevel: 2, reassuranceLevel: 2, structureLevel: 2, label: 's2d2p2r2st2' };
+}
+
+// ── PROFILE SUMMARY LAYER ───────────────────────────────────────────
+// Normalizes existing computed scores/tags/profile into a stable summary.
+// Uses ONLY data already available in the letter context — no new calculations.
+// Each level: 'low', 'moderate', 'high'
+
+function buildProfileSummary(letterContext) {
+  if (!letterContext) return _defaultProfileSummary();
+
+  var scores = letterContext.scores || {};
+  var der = letterContext.derived || {};
+  var sig = letterContext.signals || {};
+  var tags = letterContext.safetyTags || [];
+  var route = (letterContext.routeData && letterContext.routeData.route) || 'GENERAL';
+  var profile = letterContext.profile || {};
+  var metaProf = letterContext.metabolicProfile;
+
+  // ── Stress load level ─────────────────────────────────────────
+  var stressLevel = scores.stress > 65 ? 'high' : scores.stress > 40 ? 'moderate' : 'low';
+
+  // ── Hormonal pressure level ───────────────────────────────────
+  var hormonalLevel = scores.hormonal > 60 ? 'high' : scores.hormonal > 35 ? 'moderate' : 'low';
+
+  // ── Metabolic pressure: inferred from diet history + stress + hormonal
+  var metaPressure = 0;
+  if (der.manyDiets) metaPressure += 2;
+  if (der.isEmotionalEater) metaPressure += 1;
+  if (stressLevel === 'high') metaPressure += 1;
+  if (hormonalLevel === 'high') metaPressure += 1;
+  if (der.lowWater) metaPressure += 1;
+  var metabolicPressureLevel = metaPressure >= 4 ? 'high' : metaPressure >= 2 ? 'moderate' : 'low';
+
+  // ── Caution level: from safety tags
+  var excludeCount = 0;
+  var includeCount = 0;
+  for (var t = 0; t < tags.length; t++) {
+    if (tags[t].type === 'exclude') excludeCount++;
+    else includeCount++;
+  }
+  var cautionLevel = excludeCount >= 2 ? 'high' : (excludeCount >= 1 || der.hasMedical) ? 'moderate' : 'low';
+
+  // ── Energy pressure: from sleep + stress + activity + time
+  var energyPressure = 0;
+  if (der.poorSleep) energyPressure += 2;
+  if (der.highStress) energyPressure += 1;
+  if (der.lowTime) energyPressure += 1;
+  if (sig.overwhelmed) energyPressure += 2;
+  if (sig.actionCapacity === 'low') energyPressure += 1;
+  var energyPressureLevel = energyPressure >= 4 ? 'high' : energyPressure >= 2 ? 'moderate' : 'low';
+
+  // ── Dominant challenge: route-aligned primary focus
+  var dominantChallenge = _resolveDominantChallenge(route, stressLevel, hormonalLevel, metabolicPressureLevel, sig, der);
+
+  // ── Profile label
+  var label = 'st:' + stressLevel.charAt(0) + ' hr:' + hormonalLevel.charAt(0) +
+    ' mt:' + metabolicPressureLevel.charAt(0) + ' ct:' + cautionLevel.charAt(0) +
+    ' en:' + energyPressureLevel.charAt(0);
+
+  return {
+    stressLevel: stressLevel,
+    hormonalLevel: hormonalLevel,
+    metabolicPressureLevel: metabolicPressureLevel,
+    cautionLevel: cautionLevel,
+    energyPressureLevel: energyPressureLevel,
+    dominantChallenge: dominantChallenge,
+    profileLabel: label
+  };
+}
+
+function _resolveDominantChallenge(route, stressLevel, hormonalLevel, metabolicPressureLevel, sig, der) {
+  // Route-aligned dominant challenge — deterministic priority
+  if (route === 'POSTPARTUM') return 'recovery';
+  if (route === 'LOSS') return 'emotional_stability';
+  if (route === 'BURNOUT') return stressLevel === 'high' ? 'stress_regulation' : 'energy_rebuild';
+  if (route === 'DIVORCE') return 'emotional_rebuild';
+  if (route === 'HORMONAL') return hormonalLevel === 'high' ? 'hormonal_adaptation' : 'metabolic_rebalance';
+  // GENERAL: pick from signals
+  if (stressLevel === 'high') return 'stress_regulation';
+  if (metabolicPressureLevel === 'high') return 'metabolic_rebuild';
+  if (hormonalLevel === 'high') return 'hormonal_adaptation';
+  if (sig.overwhelmed) return 'energy_rebuild';
+  if (der.manyDiets) return 'sustainable_habits';
+  return 'balanced_progress';
+}
+
+function _defaultProfileSummary() {
+  return {
+    stressLevel: 'moderate', hormonalLevel: 'moderate', metabolicPressureLevel: 'moderate',
+    cautionLevel: 'low', energyPressureLevel: 'moderate',
+    dominantChallenge: 'balanced_progress', profileLabel: 'st:m hr:m mt:m ct:l en:m'
+  };
 }
 
 // ── LETTER FRAGMENT LIBRARY ─────────────────────────────────────────
@@ -772,6 +887,19 @@ function _validateLetterContent(picked, letterContext) {
     } catch(e) {}
   }
 
+  // Profile/score consistency: apply profile rules (lowest priority — cannot override above)
+  var profSum = letterContext._profileSummary || _defaultProfileSummary();
+  var profRules = LETTER_CONFIG.PROFILE_RULES;
+  for (var pr = 0; pr < profRules.length; pr++) {
+    var pRule = profRules[pr];
+    try {
+      if (pRule.check(profSum) && picked[pRule.field] && picked[pRule.field].id === pRule.reject) {
+        var pfb = _findFallback(pRule.field, pRule.fallback);
+        if (pfb) picked[pRule.field] = pfb;
+      }
+    } catch(e) {}
+  }
+
   // Repetition control: check adjacent sections for duplicated opener phrases
   var prevText = '';
   for (var s = 0; s < sections.length; s++) {
@@ -878,9 +1006,11 @@ function buildPersonalLetter(letterContext) {
   if (!letterContext) return null;
 
   try {
-    // Compute calibration and attach to context for validation layer
+    // Compute calibration and profile summary, attach to context for validation layer
     var calibration = calibrateLetterProfile(letterContext);
     letterContext._calibration = calibration;
+    var profileSummary = buildProfileSummary(letterContext);
+    letterContext._profileSummary = profileSummary;
 
     var picked = pickLetterFragments(letterContext);
 
@@ -912,7 +1042,8 @@ function buildPersonalLetter(letterContext) {
         wordCount: words.length,
         route: (letterContext.routeData && letterContext.routeData.route) || 'GENERAL',
         toneLabel: (letterContext.tone && letterContext.tone.label) || 'unknown',
-        calibration: calibration
+        calibration: calibration,
+        profileSummary: profileSummary
       }
     };
   } catch(e) {
