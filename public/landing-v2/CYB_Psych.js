@@ -288,3 +288,441 @@ function buildFlowMessage(psychContext, location) {
 function buildPsychFragments() {
   return PSYCH_FRAGMENTS;
 }
+
+// =============================================================================
+// PERSONAL LETTER SYSTEM
+// Long-form personalized letter for complet_results.
+// Deterministic. No AI. No randomness. No HTML output.
+// =============================================================================
+
+// ── LETTER CONTEXT BUILDER ──────────────────────────────────────────
+
+function buildPersonalLetterContext(profile, signals, routeData, scores, metabolicProfile, safetyTags, answers, completionData, tone) {
+  profile = profile || {};
+  signals = signals || {};
+  routeData = routeData || {};
+  scores = scores || {};
+  answers = answers || {};
+  tone = tone || resolveToneProfile(profile, signals, routeData, scores);
+
+  var hasLimitations = (safetyTags || []).filter(function(t){ return t.type === 'exclude'; }).length > 0;
+  var hasMedical = answers.q10 && answers.q10.length > 0 && !(answers.q10.length === 1 && answers.q10[0] === 0);
+  var isEmotionalEater = answers.q15 === 0;
+  var manyDiets = (answers.q17 || 0) >= 3;
+  var lowWater = (answers.q16 || 0) <= 1;
+  var poorSleep = (answers.q5 || 0) >= 2;
+  var highStress = scores.stress > 65;
+  var modStress = scores.stress > 40 && scores.stress <= 65;
+  var highHormonal = scores.hormonal > 60;
+  var beginner = (answers.q13 || 0) <= 1;
+  var lowTime = (answers.q8 || 0) <= 1;
+  var highMotiv = (answers.q21 || 5) >= 8;
+  var lowMotiv = (answers.q21 || 5) <= 4;
+
+  return {
+    profile: profile,
+    signals: signals,
+    routeData: routeData,
+    scores: scores,
+    metabolicProfile: metabolicProfile || null,
+    safetyTags: safetyTags || [],
+    answers: answers,
+    completion: completionData || {},
+    tone: tone,
+    derived: {
+      hasLimitations: hasLimitations,
+      hasMedical: hasMedical,
+      isEmotionalEater: isEmotionalEater,
+      manyDiets: manyDiets,
+      lowWater: lowWater,
+      poorSleep: poorSleep,
+      highStress: highStress,
+      modStress: modStress,
+      highHormonal: highHormonal,
+      beginner: beginner,
+      lowTime: lowTime,
+      highMotiv: highMotiv,
+      lowMotiv: lowMotiv
+    }
+  };
+}
+
+// ── LETTER FRAGMENT LIBRARY ─────────────────────────────────────────
+// Sections: opening, reflection, pattern, reframe, direction, soft_action, closing
+// Each: { id, sec, match(ctx), text }
+// match returns true if fragment applies. First match per section wins.
+
+var LETTER_FRAGMENTS = [
+
+  // ── OPENING (6) ───────────────────────────────────────────────────
+
+  {id:'op_pp', sec:'opening',
+    match: function(c){ return c.routeData.route==='POSTPARTUM'; },
+    text: '[Prenume], ai trecut prin ceva ce schimbă totul — și nu vorbesc doar despre corp. Ai creat viață. Iar acum, undeva între nopți nedormite și responsabilități noi, ai ales să faci ceva pentru tine. Asta nu e puțin lucru.'},
+
+  {id:'op_div', sec:'opening',
+    match: function(c){ return c.routeData.route==='DIVORCE'; },
+    text: '[Prenume], știu că nu e ușor să te ocupi de tine când viața s-a schimbat atât de brusc. Separarea nu afectează doar sufletul — afectează corpul, somnul, metabolismul, totul. Și totuși, ești aici. Ai ales să nu te pierzi.'},
+
+  {id:'op_hor', sec:'opening',
+    match: function(c){ return c.routeData.route==='HORMONAL'; },
+    text: '[Prenume], dacă simți că faci totul corect dar corpul nu mai răspunde — nu ești nebună și nu ți se pare. Hormonii tăi s-au schimbat, iar regulile vechi nu mai funcționează. Am văzut asta de sute de ori. Și am învățat cum să lucrăm cu noile reguli, nu împotriva lor.'},
+
+  {id:'op_burn', sec:'opening',
+    match: function(c){ return c.routeData.route==='BURNOUT'; },
+    text: '[Prenume], pot să-ți spun ceva sincer? Faptul că funcționezi zilnic cu nivelul ăsta de epuizare nu e o dovadă de putere — e un semnal de alarmă pe care corpul tău îl tot trage. Și tocmai l-ai auzit, pentru că ești aici.'},
+
+  {id:'op_loss', sec:'opening',
+    match: function(c){ return c.routeData.route==='LOSS'; },
+    text: '[Prenume], nu voi pretinde că înțeleg ce simți — fiindcă fiecare pierdere e unică și fiecare durere are propria ei formă. Dar știu un lucru: a avea grijă de corpul tău în această perioadă nu e egoism. E un act de supraviețuire blândă.'},
+
+  {id:'op_gen', sec:'opening',
+    match: function(c){ return c.routeData.route==='GENERAL'; },
+    text: '[Prenume], în cele 27 de răspunsuri pe care le-ai dat, am văzut ceva ce majoritatea femeilor nu realizează despre ele: ai fost complet sinceră. Asta e fundația pe care construim — nu pe cifre perfecte, ci pe adevăr.'},
+
+  // ── REFLECTION (6) ────────────────────────────────────────────────
+
+  {id:'ref_overwhelmed', sec:'reflection',
+    match: function(c){ return c.signals.overwhelmed; },
+    text: 'Văd în răspunsurile tale un tipar pe care îl recunosc: faci mult, dormi puțin, dai tot pentru alții și pentru tine nu mai rămâne nimic. Corpul tău nu e leneș — e epuizat. Și un corp epuizat nu slăbește, stochează. Nu din răutate, ci din instinct de supraviețuire.'},
+
+  {id:'ref_emotional_eat', sec:'reflection',
+    match: function(c){ return c.derived.isEmotionalEater && c.derived.manyDiets; },
+    text: 'Am observat ceva important: mâncatul emoțional combinat cu un istoric lung de diete nu e o problemă de voință — e un cerc vicios hormonal. Cortizolul crește, cauți mâncare de confort, te simți vinovată, restricționezi, cortizolul crește iar. Cercul ăsta se poate sparge — dar nu cu altă dietă.'},
+
+  {id:'ref_poor_sleep_stress', sec:'reflection',
+    match: function(c){ return c.derived.poorSleep && c.derived.highStress; },
+    text: 'Somnul și stresul tău formează un cerc care se auto-alimentează: stresul îți afectează somnul, somnul prost crește cortizolul, cortizolul crește stresul. Cifrele tale reflectă asta — și planul tău va aborda exact acest lanț, de la veriga cea mai slabă.'},
+
+  {id:'ref_hormonal_shift', sec:'reflection',
+    match: function(c){ return c.derived.highHormonal; },
+    text: 'Profilul tău hormonal arată schimbări semnificative — și asta explică de ce metodele care funcționau acum câțiva ani nu mai dau rezultate. Nu e vina ta. Biologia ta s-a schimbat, și abordarea trebuie să se schimbe odată cu ea.'},
+
+  {id:'ref_beginner_kind', sec:'reflection',
+    match: function(c){ return c.derived.beginner && c.tone.vulnerability !== 'direct'; },
+    text: 'Faptul că ești la început cu mișcarea nu e o slăbiciune — e un avantaj pe care nu îl vezi încă. Corpul tău nu are obiceiuri greșite de corectat. Putem construi de la zero, corect de la prima zi, fără să descompunem nimic.'},
+
+  {id:'ref_general', sec:'reflection',
+    match: function(c){ return true; },
+    text: 'Am analizat fiecare răspuns al tău — de la cum dormi, la ce mănânci, la ce simți dimineața. Nu sunt doar cifre. Sunt indicii despre un corp care încearcă să-ți spună ceva. Iar acum, pentru prima dată, cineva ascultă.'},
+
+  // ── PATTERN (5) ───────────────────────────────────────────────────
+
+  {id:'pat_cortisol', sec:'pattern',
+    match: function(c){ return c.derived.highStress && (c.derived.isEmotionalEater || c.derived.poorSleep); },
+    text: 'Tiparul pe care îl văd la tine e clasic cortizolic: stres cronic → somn perturbat → poftă de dulce/carbohidrați → grăsime abdominală → și mai mult stres. Nu e lipsă de disciplină. E biochimie. Și biochimia se poate corecta — dar nu cu forța.'},
+
+  {id:'pat_yoyo', sec:'pattern',
+    match: function(c){ return c.derived.manyDiets && !c.derived.highStress; },
+    text: 'Ai trecut prin multe diete — și fiecare a funcționat... până când n-a mai funcționat. Asta pentru că fiecare restricție severă scade metabolismul bazal. Corpul tău a învățat să supraviețuiască cu mai puțin. Noi nu vom repeta această greșeală.'},
+
+  {id:'pat_hormonal_weight', sec:'pattern',
+    match: function(c){ return c.derived.highHormonal && c.routeData.route !== 'POSTPARTUM'; },
+    text: 'Greutatea abdominală, oboseala, schimbările de dispoziție — toate au o cauză comună: hormonii în tranziție. Nu e vorba de ce mănânci sau cât te miști. E vorba de CUM procesează corpul tău totul acum, în această etapă nouă.'},
+
+  {id:'pat_low_capacity', sec:'pattern',
+    match: function(c){ return c.signals.actionCapacity === 'low' && c.signals.structureNeed === 'high'; },
+    text: 'Ai nevoie de structură dar nu ai energie de implementat ceva complex — și asta nu e o contradicție, e informație prețioasă. Înseamnă că planul tău trebuie să fie simplu, clar, cu pași mici care nu te copleșesc.'},
+
+  {id:'pat_general', sec:'pattern',
+    match: function(c){ return true; },
+    text: 'Ce văd în profilul tău e un corp care are nevoie de consistență, nu de intensitate. Nu de revoluție, ci de direcție. Cele mai bune transformări pe care le-am ghidat nu au început cu schimbări dramatice — au început cu o singură decizie mică, repetată.'},
+
+  // ── REFRAME (5) ──────────────────────────────────────────────────
+
+  {id:'rfr_shame_high', sec:'reframe',
+    match: function(c){ return c.signals.shameRisk === 'high' || c.signals.selfBlame === 'high'; },
+    text: 'Vreau să auzi asta: NIMIC din ce e în profilul tău nu e rău. Nici greutatea, nici stresul, nici obiceiurile. Sunt doar coordonate pe o hartă — și harta nu judecă. Îți arată unde ești și de acolo începem. Nu de unde „ar trebui" să fii.'},
+
+  {id:'rfr_protective', sec:'reframe',
+    match: function(c){ return c.tone.vulnerability === 'protective'; },
+    text: 'Știu că poate ai impresia că ai „ratat" sau „pierdut timp". Dar adevărul e altul: tot ce ai trăit te-a adus exact aici. Nu ai ratat nimic — ai acumulat experiență care face planul tău mai precis decât ar fi fost acum un an.'},
+
+  {id:'rfr_warm', sec:'reframe',
+    match: function(c){ return c.tone.vulnerability === 'warm'; },
+    text: 'Ceea ce tu numești „problemă" — somnul, stresul, greutatea — eu numesc „informație". Fiecare detaliu din profilul tău ne spune exact ce are nevoie corpul tău. Nu tratăm simptome. Construim soluții pe cauze reale.'},
+
+  {id:'rfr_direct', sec:'reframe',
+    match: function(c){ return c.tone.vulnerability === 'direct'; },
+    text: 'Profilul tău arată clar: ai potențial, ai voință, ai energie. Ce lipsea până acum era un cadru care să le folosească inteligent. Diferența între a te antrena și a te transforma e direcția — și acum ai una.'},
+
+  {id:'rfr_general', sec:'reframe',
+    match: function(c){ return true; },
+    text: 'Fiecare femeie care ajunge la acest ecran a trecut prin exact aceleași dubii: „Oare va funcționa de data asta?" Diferența e că de data asta, planul nu e generic. E construit pe 27 de răspunsuri care sunt doar ale tale.'},
+
+  // ── DIRECTION (5) ────────────────────────────────────────────────
+
+  {id:'dir_gentle', sec:'direction',
+    match: function(c){ return c.tone.pace === 'gentle'; },
+    text: 'Planul tău va începe încet — poate mai încet decât te aștepți. Primele săptămâni sunt despre a restabili baza: somn, hidratare, mișcare blândă, mâncare care susține. Zero restricții extreme. Zero antrenamente care te distrug. Doar fundație solidă.'},
+
+  {id:'dir_structured', sec:'direction',
+    match: function(c){ return c.tone.pace === 'structured' && c.derived.hasLimitations; },
+    text: 'Planul tău e construit cu protecție: fiecare exercițiu va respecta limitările tale fizice, fiecare rețetă va ține cont de condițiile tale. Structură clară, adaptată — nu un plan de pe internet cu disclaimer „consultă un medic".'},
+
+  {id:'dir_structured_default', sec:'direction',
+    match: function(c){ return c.tone.pace === 'structured'; },
+    text: 'Vei primi o structură clară: ce mănânci, când te antrenezi, cât bei, cum dormi. Fiecare element are un motiv, fiecare pas are o logică. Nu e vorba de rigiditate — e vorba de cadru care te eliberează de ghicitul zilnic.'},
+
+  {id:'dir_ambitious', sec:'direction',
+    match: function(c){ return c.tone.pace === 'ambitious'; },
+    text: 'Ai capacitatea pentru un plan real, intens și structurat. Vei primi antrenamente progresive, nutriție calculată pe obiectiv, și un ritm care te provoacă fără să te epuizeze. Consistența ta va face diferența.'},
+
+  {id:'dir_general', sec:'direction',
+    match: function(c){ return true; },
+    text: 'Ce urmează e un plan construit pe datele tale reale: metabolismul tău, stresul tău, limitările tale, obiectivul tău. Nu o formulă generică. Fiecare decizie din program are în spate cele 27 de răspunsuri pe care le-ai dat.'},
+
+  // ── SOFT ACTION (4) ──────────────────────────────────────────────
+
+  {id:'act_protective', sec:'soft_action',
+    match: function(c){ return c.tone.motivation === 'nurturing'; },
+    text: 'Nu trebuie să faci nimic acum. Dacă singurul lucru pe care îl faci azi e să citești această scrisoare și să te gândești „poate ar merge" — e suficient. Restul vine când ești pregătită. Noi suntem aici.'},
+
+  {id:'act_coaching', sec:'soft_action',
+    match: function(c){ return c.tone.motivation === 'coaching'; },
+    text: 'Următorul pas e simplu: scrie-i Danielei pe WhatsApp. Spune-i ce te-a rezonat din profilul tău. În 24 de ore vei avea un plan construit pe tot ce am învățat despre tine din aceste 27 de răspunsuri.'},
+
+  {id:'act_challenging', sec:'soft_action',
+    match: function(c){ return c.tone.motivation === 'challenging'; },
+    text: 'Ai datele. Ai direcția. Ai motivația. Singurul lucru care te mai separă de plan e o decizie. Scrie-i Danielei și în 24 de ore transformăm cifrele astea într-un program de acțiune concret.'},
+
+  {id:'act_general', sec:'soft_action',
+    match: function(c){ return true; },
+    text: 'Dacă ceva din ce ai citit aici te-a făcut să simți „da, asta sunt eu" — atunci merită să faci următorul pas. Scrie-i Danielei pe WhatsApp. Spune-i ce ai simțit. Restul se construiește de acolo.'},
+
+  // ── CLOSING (4) ──────────────────────────────────────────────────
+
+  {id:'cls_protective', sec:'closing',
+    match: function(c){ return c.tone.vulnerability === 'protective'; },
+    text: 'Cu grijă și fără grabă,\nDaniela'},
+
+  {id:'cls_warm', sec:'closing',
+    match: function(c){ return c.tone.vulnerability === 'warm'; },
+    text: 'Cu drag și cu un plan,\nDaniela'},
+
+  {id:'cls_direct', sec:'closing',
+    match: function(c){ return c.tone.vulnerability === 'direct'; },
+    text: 'Te aștept pe cealaltă parte,\nDaniela'},
+
+  {id:'cls_general', sec:'closing',
+    match: function(c){ return true; },
+    text: 'Sunt aici când ești pregătită,\nDaniela'}
+];
+
+// ── LETTER FRAGMENT LIBRARY (introspection) ─────────────────────────
+
+function buildLetterFragments() {
+  return LETTER_FRAGMENTS;
+}
+
+// ── LETTER FRAGMENT PICKER ──────────────────────────────────────────
+// Picks first matching fragment for each section.
+// Returns object: { opening: fragment, reflection: fragment, ... }
+
+function pickLetterFragments(letterContext, fragmentLibrary) {
+  fragmentLibrary = fragmentLibrary || LETTER_FRAGMENTS;
+  var sections = ['opening', 'reflection', 'pattern', 'reframe', 'direction', 'soft_action', 'closing'];
+  var picked = {};
+
+  for (var i = 0; i < fragmentLibrary.length; i++) {
+    var f = fragmentLibrary[i];
+    if (picked[f.sec]) continue;
+    try {
+      if (f.match(letterContext)) {
+        picked[f.sec] = f;
+      }
+    } catch(e) {}
+  }
+
+  return picked;
+}
+
+// ── LETTER COMPOSER ─────────────────────────────────────────────────
+// Assembles selected fragments into a personal letter string.
+// Returns string or null.
+
+function composePersonalLetter(selectedFragments, letterContext) {
+  if (!selectedFragments) return null;
+
+  var sections = ['opening', 'reflection', 'pattern', 'reframe', 'direction', 'soft_action', 'closing'];
+  var name = (letterContext.profile && letterContext.profile.name) || '';
+  var parts = [];
+
+  for (var i = 0; i < sections.length; i++) {
+    var frag = selectedFragments[sections[i]];
+    if (frag && frag.text) {
+      var text = frag.text.replace(/\[Prenume\]/g, name);
+      parts.push(text);
+    }
+  }
+
+  if (parts.length < 3) return null;
+  return parts.join('\n\n');
+}
+
+// ── CONTENT QUALITY GATE ────────────────────────────────────────────
+// Deterministic validation pass on picked fragments before final compose.
+// Returns cleaned picked object or null if letter is unsalvageable.
+
+function _validateLetterContent(picked, letterContext) {
+  if (!picked) return null;
+
+  var required = ['opening', 'direction', 'closing'];
+  for (var r = 0; r < required.length; r++) {
+    if (!picked[required[r]] || !picked[required[r]].text) return null;
+  }
+
+  // Count valid sections — need at least 5
+  var sections = ['opening', 'reflection', 'pattern', 'reframe', 'direction', 'soft_action', 'closing'];
+  var validCount = 0;
+  for (var v = 0; v < sections.length; v++) {
+    if (picked[sections[v]] && picked[sections[v]].text && picked[sections[v]].text.length > 20) {
+      validCount++;
+    }
+  }
+  if (validCount < 5) return null;
+
+  // Route consistency: detect pace/tone conflicts between fragments
+  var tone = letterContext.tone || {};
+  var isGentle = tone.pace === 'gentle' || tone.vulnerability === 'protective';
+  var isAggressive = tone.pace === 'ambitious' && tone.motivation === 'challenging';
+
+  // If gentle tone: reject hard-push soft_action fragments
+  if (isGentle && picked.soft_action && picked.soft_action.id === 'act_challenging') {
+    // Swap to general fallback
+    picked.soft_action = _findFallback('soft_action', 'act_general');
+  }
+  // If aggressive tone: reject overly nurturing soft_action
+  if (isAggressive && picked.soft_action && picked.soft_action.id === 'act_protective') {
+    picked.soft_action = _findFallback('soft_action', 'act_general');
+  }
+
+  // Repetition control: check adjacent sections for duplicated opener phrases
+  var prevText = '';
+  for (var s = 0; s < sections.length; s++) {
+    var sec = sections[s];
+    if (!picked[sec] || !picked[sec].text) continue;
+    var curText = picked[sec].text;
+
+    // Check if this section starts with the same 4+ words as previous
+    var curOpener = _extractOpener(curText);
+    var prevOpener = _extractOpener(prevText);
+    if (curOpener && prevOpener && curOpener === prevOpener) {
+      // Skip this section to avoid repetition
+      picked[sec] = null;
+    }
+
+    // Check for high similarity (>40% shared significant words)
+    if (prevText && curText && _wordOverlap(prevText, curText) > 0.4) {
+      picked[sec] = null;
+    }
+
+    if (picked[sec]) prevText = curText;
+  }
+
+  // Re-check required sections still exist after repetition removal
+  for (var r2 = 0; r2 < required.length; r2++) {
+    if (!picked[required[r2]] || !picked[required[r2]].text) return null;
+  }
+
+  // Re-count valid
+  var finalCount = 0;
+  for (var f = 0; f < sections.length; f++) {
+    if (picked[sections[f]] && picked[sections[f]].text && picked[sections[f]].text.length > 20) {
+      finalCount++;
+    }
+  }
+  if (finalCount < 5) return null;
+
+  return picked;
+}
+
+// Helper: extract first 4 words as opener fingerprint
+function _extractOpener(text) {
+  if (!text) return '';
+  var words = text.replace(/[.,!?—:;]/g, '').split(/\s+/).slice(0, 4);
+  if (words.length < 4) return '';
+  return words.join(' ').toLowerCase();
+}
+
+// Helper: compute word overlap ratio between two texts (significant words only)
+function _wordOverlap(a, b) {
+  var stopWords = ['și','e','nu','de','în','ce','că','cu','pe','la','o','a','ai','un','din','dar','sau','pentru','este','sunt','te','se','asta','mai','tot','fi','ca','el','ea'];
+  var wordsA = _significantWords(a, stopWords);
+  var wordsB = _significantWords(b, stopWords);
+  if (wordsA.length === 0 || wordsB.length === 0) return 0;
+  var setB = {};
+  for (var i = 0; i < wordsB.length; i++) setB[wordsB[i]] = true;
+  var shared = 0;
+  for (var j = 0; j < wordsA.length; j++) {
+    if (setB[wordsA[j]]) shared++;
+  }
+  return shared / Math.min(wordsA.length, wordsB.length);
+}
+
+function _significantWords(text, stopWords) {
+  var words = text.toLowerCase().replace(/[.,!?—:;„""()\[\]]/g, '').split(/\s+/);
+  var result = [];
+  var stopSet = {};
+  for (var s = 0; s < stopWords.length; s++) stopSet[stopWords[s]] = true;
+  for (var i = 0; i < words.length; i++) {
+    if (words[i].length > 2 && !stopSet[words[i]]) result.push(words[i]);
+  }
+  return result;
+}
+
+// Helper: find a specific fallback fragment by id
+function _findFallback(section, fallbackId) {
+  for (var i = 0; i < LETTER_FRAGMENTS.length; i++) {
+    if (LETTER_FRAGMENTS[i].id === fallbackId) return LETTER_FRAGMENTS[i];
+  }
+  return null;
+}
+
+// ── FINAL LETTER VALIDATION ─────────────────────────────────────────
+// Validates composed text meets production quality requirements.
+// Returns text or null.
+
+function _validateLetterText(text) {
+  if (typeof text !== 'string') return null;
+
+  // Strip placeholder leftovers
+  text = text.replace(/\[Prenume\]/g, '');
+
+  // Word count check: 180–420 range (generous bounds for edge cases)
+  var words = text.split(/\s+/).filter(function(w){ return w.length > 0; });
+  if (words.length < 180 || words.length > 420) return null;
+
+  // Character length minimum
+  if (text.length < 500) return null;
+
+  return text;
+}
+
+// ── BUILD PERSONAL LETTER (top-level API) ───────────────────────────
+// Returns { text: string, sections: object } or null on failure.
+
+function buildPersonalLetter(letterContext) {
+  if (!letterContext) return null;
+
+  try {
+    var picked = pickLetterFragments(letterContext);
+
+    // Content quality gate
+    picked = _validateLetterContent(picked, letterContext);
+    if (!picked) return null;
+
+    var text = composePersonalLetter(picked, letterContext);
+
+    // Final text validation
+    text = _validateLetterText(text);
+    if (!text) return null;
+
+    return {
+      text: text,
+      sections: picked
+    };
+  } catch(e) {
+    return null;
+  }
+}
