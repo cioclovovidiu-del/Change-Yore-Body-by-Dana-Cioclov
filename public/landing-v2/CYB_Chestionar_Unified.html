@@ -228,7 +228,8 @@ function goBack(){
   }
 }
 function startComplet(){
-  if(STATE.profile.gdpr){
+  if(STATE.profile.gdpr&&!STATE._miniEmailSent){
+    STATE._miniEmailSent=true;
     try{fetch('/api/send-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'mini',profile:STATE.profile})}).catch(function(){});}catch(e){}
   }
   STATE.phase='COMPLET';
