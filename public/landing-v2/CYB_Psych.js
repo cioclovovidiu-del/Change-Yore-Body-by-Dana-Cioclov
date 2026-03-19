@@ -386,6 +386,32 @@ var LETTER_CONFIG = {
     // High metabolic pressure → prefer cortisol/yoyo pattern awareness
     { check: function(ps){ return ps.metabolicPressureLevel === 'high'; },
       reject: 'pat_general', fallback: 'pat_cortisol', field: 'pattern' }
+  ],
+
+  // Language tuning rules: applied LAST before repetition control
+  // Fine-grained wording swaps based on composite language profile
+  LANGUAGE_RULES: [
+    // High warmth + soft reassurance → prefer warm closing over direct
+    { check: function(lp){ return lp.warmthLevel >= 3 && lp.reassuranceStyle === 'soft'; },
+      reject: 'cls_direct', fallback: 'cls_warm', field: 'closing' },
+    // Low warmth + direct reassurance → prefer direct closing over protective
+    { check: function(lp){ return lp.warmthLevel <= 1 && lp.reassuranceStyle === 'direct'; },
+      reject: 'cls_protective', fallback: 'cls_direct', field: 'closing' },
+    // Protective action style → prefer protective soft_action
+    { check: function(lp){ return lp.actionStyle === 'protective'; },
+      reject: 'act_challenging', fallback: 'act_protective', field: 'soft_action' },
+    // Momentum action style + energizing vocab → prefer coaching over general
+    { check: function(lp){ return lp.actionStyle === 'momentum' && lp.vocabularyStyle === 'energizing'; },
+      reject: 'act_general', fallback: 'act_coaching', field: 'soft_action' },
+    // Gentle pacing + calm vocab → prefer gentle direction over structured
+    { check: function(lp){ return lp.pacingStyle === 'gentle' && lp.vocabularyStyle === 'calm'; },
+      reject: 'dir_structured_default', fallback: 'dir_gentle', field: 'direction' },
+    // Structured pacing + high firmness → prefer structured direction over general
+    { check: function(lp){ return lp.pacingStyle === 'structured' && lp.firmnessLevel >= 2; },
+      reject: 'dir_general', fallback: 'dir_structured_default', field: 'direction' },
+    // High warmth → prefer warm reframe over general
+    { check: function(lp){ return lp.warmthLevel >= 3; },
+      reject: 'rfr_general', fallback: 'rfr_warm', field: 'reframe' }
   ]
 };
 
@@ -620,6 +646,85 @@ function _defaultProfileSummary() {
     stressLevel: 'moderate', hormonalLevel: 'moderate', metabolicPressureLevel: 'moderate',
     cautionLevel: 'low', energyPressureLevel: 'moderate',
     dominantChallenge: 'balanced_progress', profileLabel: 'st:m hr:m mt:m ct:l en:m'
+  };
+}
+
+// ── LANGUAGE TUNING LAYER ───────────────────────────────────────────
+// Deterministic wording intensity profile derived from tone + calibration + profileSummary.
+// Returns { warmthLevel, firmnessLevel, pacingStyle, reassuranceStyle, actionStyle, vocabularyStyle, label }
+
+function buildLanguageTuning(tone, calibration, profileSummary) {
+  tone = tone || {};
+  calibration = calibration || _defaultCalibration();
+  profileSummary = profileSummary || _defaultProfileSummary();
+
+  // ── Warmth: composite of calibration softness + tone vulnerability
+  var warmth = calibration.softnessLevel;
+  if (tone.vulnerability === 'protective') warmth = Math.max(warmth, 3);
+  else if (tone.vulnerability === 'warm') warmth = Math.max(warmth, 2);
+  // Hormonal/metabolic pressure adds warmth
+  if (profileSummary.hormonalLevel === 'high' || profileSummary.metabolicPressureLevel === 'high') {
+    warmth = Math.max(warmth, 2);
+  }
+  warmth = Math.max(1, Math.min(3, warmth));
+
+  // ── Firmness: inverse of softness, modulated by structure need
+  var firmness = 4 - calibration.softnessLevel; // 3→1, 2→2, 1→3
+  if (calibration.structureLevel >= 3) firmness = Math.max(firmness, 2);
+  if (profileSummary.energyPressureLevel === 'high') firmness = Math.min(firmness, 2);
+  firmness = Math.max(1, Math.min(3, firmness));
+
+  // ── Pacing style
+  var pacingStyle = 'steady';
+  if (calibration.directionLevel <= 1 || profileSummary.energyPressureLevel === 'high') {
+    pacingStyle = 'gentle';
+  } else if (calibration.structureLevel >= 3 || calibration.directionLevel >= 3) {
+    pacingStyle = 'structured';
+  }
+
+  // ── Reassurance style
+  var reassuranceStyle = 'balanced';
+  if (calibration.reassuranceLevel >= 3 || profileSummary.cautionLevel === 'high') {
+    reassuranceStyle = 'soft';
+  } else if (calibration.reassuranceLevel <= 1 && warmth <= 1) {
+    reassuranceStyle = 'direct';
+  }
+
+  // ── Action style
+  var actionStyle = 'coaching';
+  if (calibration.pushLevel <= 1 || profileSummary.energyPressureLevel === 'high') {
+    actionStyle = 'protective';
+  } else if (calibration.pushLevel >= 3 && profileSummary.energyPressureLevel !== 'high') {
+    actionStyle = 'momentum';
+  }
+
+  // ── Vocabulary style
+  var vocabularyStyle = 'balanced';
+  if (warmth >= 3 && pacingStyle === 'gentle') {
+    vocabularyStyle = 'calm';
+  } else if (firmness >= 3 && actionStyle === 'momentum') {
+    vocabularyStyle = 'energizing';
+  }
+
+  var label = 'w' + warmth + 'f' + firmness + '-' + pacingStyle.charAt(0) +
+    reassuranceStyle.charAt(0) + actionStyle.charAt(0) + vocabularyStyle.charAt(0);
+
+  return {
+    warmthLevel: warmth,
+    firmnessLevel: firmness,
+    pacingStyle: pacingStyle,
+    reassuranceStyle: reassuranceStyle,
+    actionStyle: actionStyle,
+    vocabularyStyle: vocabularyStyle,
+    label: label
+  };
+}
+
+function _defaultLanguageTuning() {
+  return {
+    warmthLevel: 2, firmnessLevel: 2, pacingStyle: 'steady',
+    reassuranceStyle: 'balanced', actionStyle: 'coaching', vocabularyStyle: 'balanced',
+    label: 'w2f2-sbcb'
   };
 }
 
@@ -900,6 +1005,19 @@ function _validateLetterContent(picked, letterContext) {
     } catch(e) {}
   }
 
+  // Language tuning: apply language rules (finest granularity, lowest priority)
+  var langProf = letterContext._languageTuning || _defaultLanguageTuning();
+  var langRules = LETTER_CONFIG.LANGUAGE_RULES;
+  for (var lr = 0; lr < langRules.length; lr++) {
+    var lRule = langRules[lr];
+    try {
+      if (lRule.check(langProf) && picked[lRule.field] && picked[lRule.field].id === lRule.reject) {
+        var lfb = _findFallback(lRule.field, lRule.fallback);
+        if (lfb) picked[lRule.field] = lfb;
+      }
+    } catch(e) {}
+  }
+
   // Repetition control: check adjacent sections for duplicated opener phrases
   var prevText = '';
   for (var s = 0; s < sections.length; s++) {
@@ -1006,11 +1124,13 @@ function buildPersonalLetter(letterContext) {
   if (!letterContext) return null;
 
   try {
-    // Compute calibration and profile summary, attach to context for validation layer
+    // Compute calibration, profile summary, and language tuning
     var calibration = calibrateLetterProfile(letterContext);
     letterContext._calibration = calibration;
     var profileSummary = buildProfileSummary(letterContext);
     letterContext._profileSummary = profileSummary;
+    var languageTuning = buildLanguageTuning(letterContext.tone, calibration, profileSummary);
+    letterContext._languageTuning = languageTuning;
 
     var picked = pickLetterFragments(letterContext);
 
@@ -1043,7 +1163,8 @@ function buildPersonalLetter(letterContext) {
         route: (letterContext.routeData && letterContext.routeData.route) || 'GENERAL',
         toneLabel: (letterContext.tone && letterContext.tone.label) || 'unknown',
         calibration: calibration,
-        profileSummary: profileSummary
+        profileSummary: profileSummary,
+        languageProfile: languageTuning
       }
     };
   } catch(e) {
