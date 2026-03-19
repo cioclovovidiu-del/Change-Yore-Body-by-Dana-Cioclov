@@ -5,6 +5,19 @@
 // No DOM. No side effects. No randomness. Deterministic from same input.
 // =============================================================================
 
+// ── FEATURE FLAGS ───────────────────────────────────────────────────
+
+var PERSONAL_LETTER_ENABLED = true;
+
+// Deterministic rollout policy — checks flag + optional context conditions.
+// Returns true if Personal Letter should be built/rendered for this context.
+function canUsePersonalLetter(letterContext) {
+  if (!PERSONAL_LETTER_ENABLED) return false;
+  if (!letterContext) return false;
+  // Future rollout conditions can be added here (route gates, etc.)
+  return true;
+}
+
 // ── TONE PROFILE ────────────────────────────────────────────────────
 
 function resolveToneProfile(profile, signals, routeData, scores) {
@@ -1121,7 +1134,7 @@ function _validateLetterText(text) {
 // Returns { text: string, sections: object } or null on failure.
 
 function buildPersonalLetter(letterContext) {
-  if (!letterContext) return null;
+  if (!canUsePersonalLetter(letterContext)) return null;
 
   try {
     // Compute calibration, profile summary, and language tuning
@@ -1897,6 +1910,7 @@ function runPersonalLetterReleaseGate() {
   return {
     ok: allOk,
     version: PERSONAL_LETTER_VERSION,
+    featureEnabled: PERSONAL_LETTER_ENABLED,
     checks: checks,
     stats: stats,
     details: details

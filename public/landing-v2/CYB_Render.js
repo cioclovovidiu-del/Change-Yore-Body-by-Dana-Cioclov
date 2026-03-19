@@ -346,10 +346,13 @@ function renderCompletResults(s, P, A, btn, resetHtml) {
   var _cPsychMsg = buildFlowMessage(_cPsychCtx, 'complet_results');
   var _cValText = _cPsychMsg || personalize(_cMsgVal.text, P.name);
 
-  // Personal letter (hardened)
-  var _cLetterCtx = buildPersonalLetterContext(P, _cSig, _cRoute, {stress: cStress, hormonal: cHormonal}, _cMetaProfile, _cTags, A, {}, _cPsychCtx.tone);
+  // Personal letter (hardened + feature-flagged)
   var _cLetter = null;
-  try { _cLetter = buildPersonalLetter(_cLetterCtx); } catch(e) { _cLetter = null; }
+  var _cLetterCtx = null;
+  if (typeof canUsePersonalLetter === 'function' && typeof PERSONAL_LETTER_ENABLED !== 'undefined' && PERSONAL_LETTER_ENABLED) {
+    _cLetterCtx = buildPersonalLetterContext(P, _cSig, _cRoute, {stress: cStress, hormonal: cHormonal}, _cMetaProfile, _cTags, A, {}, _cPsychCtx.tone);
+    try { _cLetter = buildPersonalLetter(_cLetterCtx); } catch(e) { _cLetter = null; }
+  }
   var _cLetterHtml = '';
   if (_cLetter && typeof _cLetter.text === 'string' && _cLetter.text.length >= 100) {
     // Strip any leftover [Prenume] placeholders (name safety)
