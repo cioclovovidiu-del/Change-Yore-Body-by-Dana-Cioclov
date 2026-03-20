@@ -49,12 +49,14 @@ function renderTextInput(s, P, btn) {
 
 function renderNumberInput(s, P, btn) {
   btn.textContent = UI.buttons.next;
-  btn.disabled = !P[s.id];
+  var nVal = P[s.id];
+  var isValid = typeof nVal === 'number' && !isNaN(nVal) && (s.min === undefined || nVal >= s.min) && (s.max === undefined || nVal <= s.max);
+  btn.disabled = !isValid;
   return '<div class="slide active">' +
     '<div class="q-label">' + (s.label || '') + '</div>' +
     '<div class="q-title">' + (s.title || '') + '</div>' +
     '<div class="q-sub">' + (s.sub || '') + '</div>' +
-    '<input class="number-input" type="number" placeholder="' + (s.ph || '') + '" min="' + (s.min || '') + '" max="' + (s.max || '') + '" value="' + (P[s.id] || '') + '" oninput="STATE.profile[\'' + s.id + '\']=parseInt(this.value);document.getElementById(\'btnNext\').disabled=!this.value;showEmo(\'' + s.id + '\')">' +
+    '<input class="number-input" type="number" placeholder="' + (s.ph || '') + '" min="' + (s.min || '') + '" max="' + (s.max || '') + '" value="' + (P[s.id] || '') + '" oninput="var v=parseInt(this.value);STATE.profile[\'' + s.id + '\']=isNaN(v)?undefined:v;var ok=!isNaN(v)' + (s.min !== undefined ? '&&v>=' + s.min : '') + (s.max !== undefined ? '&&v<=' + s.max : '') + ';document.getElementById(\'btnNext\').disabled=!ok;if(ok)showEmo(\'' + s.id + '\')">' +
     '<div class="emo-msg" id="emo"></div>' +
   '</div>';
 }
@@ -474,4 +476,36 @@ function renderCompletResults(s, P, A, btn, resetHtml) {
     '</div>' +
     resetHtml +
   '</div>';
+}
+
+// ── FALLBACK RENDERER ────────────────────────────────────────────────
+function renderFallback(s) {
+  return '<div class="slide active"><p style="color:var(--text);text-align:center;padding:40px 20px">Pas necunoscut: ' + (s.type || 'undefined') + '</p></div>';
+}
+
+// ── RENDERERS DISPATCH MAP (module scope — created once) ─────────────
+// Keyed by step.type. Each entry is a function(ctx) returning HTML string.
+// ctx = { s, P, A, btn, resetHtml }
+var RENDERERS = {
+  welcome:         function(c){ return renderWelcome(c.s, c.P, c.btn, c.resetHtml); },
+  text:            function(c){ return renderTextInput(c.s, c.P, c.btn); },
+  number:          function(c){ return renderNumberInput(c.s, c.P, c.btn); },
+  measures:        function(c){ return renderMeasures(c.s, c.P, c.btn); },
+  activity:        function(c){ return renderActivity(c.s, c.P, c.btn); },
+  cards:           function(c){ return renderCards(c.s, c.P, c.btn); },
+  gdpr_email:      function(c){ return renderGdprEmail(c.s, c.P, c.btn); },
+  mini_results:    function(c){ return renderMiniResults(c.s, c.P, c.A, c.btn, c.resetHtml); },
+  transition:      function(c){ return renderTransition(c.s, c.P, c.A, c.btn); },
+  single:          function(c){ return renderSingle(c.s, c.A, c.btn); },
+  multi:           function(c){ return renderMulti(c.s, c.A, c.btn); },
+  scale:           function(c){ return renderScale(c.s, c.A, c.btn); },
+  textarea:        function(c){ return renderTextarea(c.s, c.A, c.btn); },
+  complet_results: function(c){ return renderCompletResults(c.s, c.P, c.A, c.btn, c.resetHtml); }
+};
+
+// ── dispatchRender: single entry point for render() to call ──────────
+function dispatchRender(ctx) {
+  var renderer = RENDERERS[ctx.s.type];
+  if (renderer) return renderer(ctx);
+  return renderFallback(ctx.s);
 }

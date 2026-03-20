@@ -53,12 +53,12 @@ function buildEmailHtml(answers: Record<string, string>, questions: QuestionMeta
 
     if (q.block !== currentBlock) {
       currentBlock = q.block;
-      rows += `<tr><td colspan="2" style="padding:14px 12px 6px;font-size:15px;font-weight:700;color:#c8a96e;border-bottom:2px solid #c8a96e;">${currentBlock}</td></tr>`;
+      rows += `<tr><td colspan="2" style="padding:14px 12px 6px;font-size:15px;font-weight:700;color:#c8a96e;border-bottom:2px solid #c8a96e;">${escapeHtml(currentBlock)}</td></tr>`;
     }
 
     rows += `<tr>
-      <td style="padding:8px 12px;font-size:13px;color:#999;vertical-align:top;width:45%;border-bottom:1px solid #2a2a2a;">${q.title}</td>
-      <td style="padding:8px 12px;font-size:14px;color:#fff;border-bottom:1px solid #2a2a2a;">${value}</td>
+      <td style="padding:8px 12px;font-size:13px;color:#999;vertical-align:top;width:45%;border-bottom:1px solid #2a2a2a;">${escapeHtml(q.title)}</td>
+      <td style="padding:8px 12px;font-size:14px;color:#fff;border-bottom:1px solid #2a2a2a;">${escapeHtml(value)}</td>
     </tr>`;
   }
 
@@ -81,10 +81,10 @@ function buildMiniHtml(profile: Record<string, unknown>): string {
   let rows = "";
   for (const [key, value] of Object.entries(profile)) {
     if (value === undefined || value === null || value === "") continue;
-    const label = MINI_LABELS[key] || key;
+    const label = escapeHtml(MINI_LABELS[key] || key);
     rows += `<tr>
       <td style="padding:8px 12px;font-size:13px;color:#999;vertical-align:top;width:45%;border-bottom:1px solid #2a2a2a;">${label}</td>
-      <td style="padding:8px 12px;font-size:14px;color:#fff;border-bottom:1px solid #2a2a2a;">${String(value)}</td>
+      <td style="padding:8px 12px;font-size:14px;color:#fff;border-bottom:1px solid #2a2a2a;">${escapeHtml(String(value))}</td>
     </tr>`;
   }
 
@@ -111,10 +111,10 @@ function buildCompletHtml(profile: Record<string, unknown>, ans: Record<string, 
   rows += `<tr><td colspan="2" style="padding:14px 12px 6px;font-size:15px;font-weight:700;color:#c8a96e;border-bottom:2px solid #c8a96e;">Profil Mini</td></tr>`;
   for (const [key, value] of Object.entries(profile)) {
     if (value === undefined || value === null || value === "") continue;
-    const label = MINI_LABELS[key] || key;
+    const label = escapeHtml(MINI_LABELS[key] || key);
     rows += `<tr>
       <td style="padding:8px 12px;font-size:13px;color:#999;vertical-align:top;width:45%;border-bottom:1px solid #2a2a2a;">${label}</td>
-      <td style="padding:8px 12px;font-size:14px;color:#fff;border-bottom:1px solid #2a2a2a;">${String(value)}</td>
+      <td style="padding:8px 12px;font-size:14px;color:#fff;border-bottom:1px solid #2a2a2a;">${escapeHtml(String(value))}</td>
     </tr>`;
   }
 
@@ -124,8 +124,8 @@ function buildCompletHtml(profile: Record<string, unknown>, ans: Record<string, 
     if (value === undefined || value === null) continue;
     const display = Array.isArray(value) ? value.join(", ") : String(value);
     rows += `<tr>
-      <td style="padding:8px 12px;font-size:13px;color:#999;vertical-align:top;width:45%;border-bottom:1px solid #2a2a2a;">${key}</td>
-      <td style="padding:8px 12px;font-size:14px;color:#fff;border-bottom:1px solid #2a2a2a;">${display}</td>
+      <td style="padding:8px 12px;font-size:13px;color:#999;vertical-align:top;width:45%;border-bottom:1px solid #2a2a2a;">${escapeHtml(key)}</td>
+      <td style="padding:8px 12px;font-size:14px;color:#fff;border-bottom:1px solid #2a2a2a;">${escapeHtml(display)}</td>
     </tr>`;
   }
 
@@ -165,6 +165,10 @@ export async function POST(request: Request) {
       if (!mini.profile) {
         return NextResponse.json({ error: "Missing profile" }, { status: 400 });
       }
+      // B3: Server-side GDPR gate — reject if consent not given
+      if (!mini.profile.gdpr) {
+        return NextResponse.json({ error: "GDPR consent required" }, { status: 403 });
+      }
       const name = escapeHtml(String(mini.profile.name || "Anonim"));
       subject = `Mini CYB — ${name}`;
       html = buildMiniHtml(mini.profile);
@@ -173,6 +177,10 @@ export async function POST(request: Request) {
       const complet = body as CompletBody;
       if (!complet.profile) {
         return NextResponse.json({ error: "Missing profile" }, { status: 400 });
+      }
+      // B3: Server-side GDPR gate — reject if consent not given
+      if (!complet.profile.gdpr) {
+        return NextResponse.json({ error: "GDPR consent required" }, { status: 403 });
       }
       const name = escapeHtml(String(complet.profile.name || "Anonim"));
       subject = `Complet CYB — ${name}`;

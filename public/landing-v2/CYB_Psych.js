@@ -235,15 +235,13 @@ function composePsychContext(profile, ans) {
 
 var PSYCH_FRAGMENTS = [
 
-  // ── ROUTE-SENSITIVE (8) ─────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════════
+  // ROUTE-SENSITIVE — mini_results (6 routes × 1)
+  // ═══════════════════════════════════════════════════════════════════
 
   {id:'rt_pp_mini', cat:'route', loc:['mini_results'],
     match: function(c){ return c.routeData.route==='POSTPARTUM'; },
     text: 'Corpul tău trece printr-o recalibrare completă după sarcină. Ce îți arătăm aici e adaptat exact pentru această etapă.'},
-
-  {id:'rt_pp_trans', cat:'route', loc:['transition'],
-    match: function(c){ return c.routeData.route==='POSTPARTUM'; },
-    text: 'Următoarele întrebări ne ajută să înțelegem ce are nevoie corpul tău de mamă — nu un corp generic din manual.'},
 
   {id:'rt_div_mini', cat:'route', loc:['mini_results'],
     match: function(c){ return c.routeData.route==='DIVORCE'; },
@@ -265,13 +263,79 @@ var PSYCH_FRAGMENTS = [
     match: function(c){ return c.routeData.route==='GENERAL'; },
     text: 'Profilul tău arată că ai o bază solidă. Ce urmează e construit pe potențialul tău real.'},
 
+  // ═══════════════════════════════════════════════════════════════════
+  // ROUTE-SENSITIVE — transition (6 routes × 1)
+  // ═══════════════════════════════════════════════════════════════════
+
+  {id:'rt_pp_trans', cat:'route', loc:['transition'],
+    match: function(c){ return c.routeData.route==='POSTPARTUM'; },
+    text: 'Următoarele întrebări ne ajută să înțelegem ce are nevoie corpul tău de mamă — nu un corp generic din manual.'},
+
+  {id:'rt_div_trans', cat:'route', loc:['transition'],
+    match: function(c){ return c.routeData.route==='DIVORCE'; },
+    text: 'Fiecare răspuns ne ajută să construim un plan care ține cont de presiunea emoțională prin care treci.'},
+
+  {id:'rt_hor_trans', cat:'route', loc:['transition'],
+    match: function(c){ return c.routeData.route==='HORMONAL'; },
+    text: 'Întrebările următoare ne ajută să adaptăm totul la biologia ta actuală — nu la standarde generice.'},
+
+  {id:'rt_burn_trans', cat:'route', loc:['transition'],
+    match: function(c){ return c.routeData.route==='BURNOUT'; },
+    text: 'Nu adăugăm presiune. Aceste întrebări ne arată cum să construim un plan care te susține, nu te epuizează.'},
+
+  {id:'rt_loss_trans', cat:'route', loc:['transition'],
+    match: function(c){ return c.routeData.route==='LOSS'; },
+    text: 'Răspunde doar ce simți că poți. Fiecare detaliu ne ajută, dar ritmul e al tău.'},
+
+  {id:'rt_gen_trans', cat:'route', loc:['transition'],
+    match: function(c){ return c.routeData.route==='GENERAL'; },
+    text: 'Cu fiecare răspuns, profilul tău devine mai precis. Continuăm să construim pe fundația ta.'},
+
+  // ═══════════════════════════════════════════════════════════════════
+  // ROUTE-SENSITIVE — complet_results (6 routes × 1)
+  // ═══════════════════════════════════════════════════════════════════
+
+  {id:'rt_pp_complet', cat:'route', loc:['complet_results'],
+    match: function(c){ return c.routeData.route==='POSTPARTUM'; },
+    text: 'Analiza ta completă reflectă nevoile reale ale unui corp postpartum — nu ale unui corp teoretic.'},
+
+  {id:'rt_div_complet', cat:'route', loc:['complet_results'],
+    match: function(c){ return c.routeData.route==='DIVORCE'; },
+    text: 'Am integrat contextul emoțional în fiecare recomandare. Planul tău ține cont de ce treci.'},
+
+  {id:'rt_hor_complet', cat:'route', loc:['complet_results'],
+    match: function(c){ return c.routeData.route==='HORMONAL'; },
+    text: 'Toate recomandările de mai jos sunt calibrate pe profilul tău hormonal real — nu pe formule generice.'},
+
+  {id:'rt_burn_complet', cat:'route', loc:['complet_results'],
+    match: function(c){ return c.routeData.route==='BURNOUT'; },
+    text: 'Planul tău e construit să scadă presiunea, nu să o crească. Fiecare pas e dimensionat pentru capacitatea ta reală.'},
+
+  {id:'rt_loss_complet', cat:'route', loc:['complet_results'],
+    match: function(c){ return c.routeData.route==='LOSS'; },
+    text: 'Rezultatele tale sunt prezentate fără presiune. Fiecare recomandare e o invitație, nu o obligație.'},
+
   {id:'rt_gen_complet', cat:'route', loc:['complet_results'],
     match: function(c){ return c.routeData.route==='GENERAL'; },
     text: 'Ai parcurs fiecare secțiune cu seriozitate — asta ne permite să construim ceva cu adevărat adaptat.'},
 
-  // ── STRESS-SENSITIVE (5) ────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════════
+  // STRESS-SENSITIVE (7: high/mod/low × results + high/mod/low × transition)
+  // ═══════════════════════════════════════════════════════════════════
 
-  {id:'st_high_mini', cat:'stress', loc:['mini_results','complet_results'],
+  // ── STRESS VARIANTS (v2) — more specific, must precede general ──
+
+  {id:'st_high_res_v2', cat:'stress', loc:['mini_results','complet_results'],
+    match: function(c){ return c.scores.stress > 65 && c.scores.hormonal > 50; },
+    text: 'Stresul ridicat combinat cu schimbări hormonale creează un context special. Planul tău va adresa ambele, nu doar unul.'},
+
+  {id:'st_mod_res_v2', cat:'stress', loc:['mini_results','complet_results'],
+    match: function(c){ return c.scores.stress > 40 && c.scores.stress <= 65 && c.signals.actionCapacity==='low'; },
+    text: 'Stresul moderat cu capacitate redusă cere un plan blând. Nu viteză — ci direcție clară și pași mici.'},
+
+  // ── STRESS GENERAL — fallback when no variant matches ──────────
+
+  {id:'st_high_res', cat:'stress', loc:['mini_results','complet_results'],
     match: function(c){ return c.scores.stress > 65; },
     text: 'Nivelul tău de stres e ridicat — dar asta nu e o condamnare. E informația care ne arată de unde să începem: cu liniște, nu cu restricții.'},
 
@@ -279,7 +343,7 @@ var PSYCH_FRAGMENTS = [
     match: function(c){ return c.scores.stress > 65; },
     text: 'Știm că nivelul tău de stres e sus. Aceste întrebări ne ajută să construim un plan care scade presiunea, nu o crește.'},
 
-  {id:'st_mod_mini', cat:'stress', loc:['mini_results','complet_results'],
+  {id:'st_mod_res', cat:'stress', loc:['mini_results','complet_results'],
     match: function(c){ return c.scores.stress > 40 && c.scores.stress <= 65; },
     text: 'Stresul tău e moderat — destul cât să influențeze greutatea și energia, dar gestionabil cu direcția corectă.'},
 
@@ -287,11 +351,25 @@ var PSYCH_FRAGMENTS = [
     match: function(c){ return c.scores.stress > 40 && c.scores.stress <= 65; },
     text: 'Stresul tău e prezent dar controlabil. Răspunsurile tale ne ajută să menținem echilibrul, nu să adăugăm presiune.'},
 
-  {id:'st_low', cat:'stress', loc:['mini_results','complet_results'],
+  {id:'st_low_res', cat:'stress', loc:['mini_results','complet_results'],
     match: function(c){ return c.scores.stress <= 40; },
     text: 'Nivelul tău de stres e bun — corpul tău e pregătit să răspundă la schimbare fără să lupte împotriva lui.'},
 
-  // ── SHAME / SELF-BLAME (4) ─────────────────────────────────────
+  {id:'st_low_trans', cat:'stress', loc:['transition'],
+    match: function(c){ return c.scores.stress <= 40; },
+    text: 'Corpul tău e într-o zonă bună de stres. Răspunsurile următoare ne ajută să menținem acest avantaj.'},
+
+  // ═══════════════════════════════════════════════════════════════════
+  // SHAME / SELF-BLAME (7: across locations + variants)
+  // ═══════════════════════════════════════════════════════════════════
+
+  // ── SHAME VARIANT — more specific, must precede general ─────────
+
+  {id:'sh_high_overwhelm_mini', cat:'shame', loc:['mini_results'],
+    match: function(c){ return c.signals.selfBlame==='high' && c.signals.overwhelmed; },
+    text: 'Știm că te simți copleșită. Aceste cifre nu sunt despre ce ai greșit — sunt despre ce putem corecta împreună.'},
+
+  // ── SHAME GENERAL ──────────────────────────────────────────────
 
   {id:'sh_high_mini', cat:'shame', loc:['mini_results'],
     match: function(c){ return c.signals.shameRisk==='high' || c.signals.selfBlame==='high'; },
@@ -301,49 +379,97 @@ var PSYCH_FRAGMENTS = [
     match: function(c){ return c.signals.shameRisk==='high' || c.signals.selfBlame==='high'; },
     text: 'Fiecare număr de aici e o informație, nu o etichetă. Programul tău e construit să te susțină, nu să te evalueze.'},
 
-  {id:'sh_med', cat:'shame', loc:['mini_results','complet_results'],
+  {id:'sh_high_trans', cat:'shame', loc:['transition'],
+    match: function(c){ return c.signals.shameRisk==='high' || c.signals.selfBlame==='high'; },
+    text: 'Nu există răspunsuri greșite aici. Fiecare detaliu ne ajută să construim ceva care te protejează, nu te expune.'},
+
+  {id:'sh_med_res', cat:'shame', loc:['mini_results','complet_results'],
     match: function(c){ return c.signals.selfBlame==='medium' && c.signals.shameRisk!=='high'; },
     text: 'Nu trebuie să fii perfectă ca să merite să începi. Trebuie doar să fii aici — și ești.'},
 
-  {id:'sh_low', cat:'shame', loc:['mini_results','complet_results'],
+  {id:'sh_med_trans', cat:'shame', loc:['transition'],
+    match: function(c){ return c.signals.selfBlame==='medium' && c.signals.shameRisk!=='high'; },
+    text: 'Răspunsurile tale nu sunt judecate. Sunt informații care ne ghidează spre ce funcționează pentru tine.'},
+
+  {id:'sh_low_res', cat:'shame', loc:['mini_results','complet_results'],
     match: function(c){ return c.signals.selfBlame==='low' && c.signals.shameRisk==='low'; },
     text: 'Ai o relație sănătoasă cu propriile așteptări — asta e un avantaj real pe care îl vom folosi.'},
 
-  // ── CAPACITY / STRUCTURE (4) ───────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════════
+  // CAPACITY / STRUCTURE (8: all locations covered)
+  // ═══════════════════════════════════════════════════════════════════
 
-  {id:'cap_low', cat:'capacity', loc:['transition','complet_results'],
+  {id:'cap_low_mini', cat:'capacity', loc:['mini_results'],
+    match: function(c){ return c.signals.actionCapacity==='low'; },
+    text: 'Capacitatea ta de acțiune e limitată acum — și asta e ok. Planul tău va fi dimensionat pentru realitatea ta.'},
+
+  {id:'cap_low_trans', cat:'capacity', loc:['transition'],
     match: function(c){ return c.signals.actionCapacity==='low'; },
     text: 'Nu îți cerem mult acum. Fiecare pas mic contează — și programul tău va reflecta asta.'},
 
-  {id:'cap_med', cat:'capacity', loc:['transition','complet_results'],
+  {id:'cap_low_complet', cat:'capacity', loc:['complet_results'],
+    match: function(c){ return c.signals.actionCapacity==='low'; },
+    text: 'Am calibrat fiecare recomandare pentru capacitatea ta reală. Pași mici, dar în direcția corectă.'},
+
+  {id:'cap_med_res', cat:'capacity', loc:['mini_results','complet_results'],
     match: function(c){ return c.signals.actionCapacity==='medium' && c.signals.structureNeed==='high'; },
     text: 'Ai energie, dar ai nevoie de direcție clară. Exact asta construim: structură care funcționează cu viața ta.'},
 
-  {id:'cap_high', cat:'capacity', loc:['transition','complet_results'],
+  {id:'cap_med_trans', cat:'capacity', loc:['transition'],
+    match: function(c){ return c.signals.actionCapacity==='medium'; },
+    text: 'Ai resurse bune. Întrebările următoare ne ajută să le canalizăm eficient.'},
+
+  {id:'cap_high_res', cat:'capacity', loc:['mini_results','complet_results'],
     match: function(c){ return c.signals.actionCapacity==='high'; },
     text: 'Ai capacitatea și motivația — ceea ce lipsește e doar un plan care le folosește inteligent.'},
+
+  {id:'cap_high_trans', cat:'capacity', loc:['transition'],
+    match: function(c){ return c.signals.actionCapacity==='high'; },
+    text: 'Nivelul tău de energie e un avantaj clar. Aceste răspunsuri ne ajută să-l transformăm în rezultate.'},
 
   {id:'struct_high_trans', cat:'capacity', loc:['transition'],
     match: function(c){ return c.signals.structureNeed==='high' && c.signals.actionCapacity!=='low'; },
     text: 'Aceste întrebări ne ajută să creăm un cadru clar — pași concreti, nu sfaturi vagi.'},
 
-  // ── ENCOURAGEMENT / CLOSING (5) ────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════════
+  // ENCOURAGEMENT / CLOSING (9: all tone × location combos)
+  // ═══════════════════════════════════════════════════════════════════
 
-  {id:'enc_protective', cat:'closing', loc:['mini_results','complet_results'],
+  // ── CLOSING VARIANTS — motivation-specific (more specific first) ─
+
+  {id:'enc_challenging_complet', cat:'closing', loc:['complet_results'],
+    match: function(c){ return c.tone.motivation==='challenging'; },
+    text: 'Ai fost directă și sinceră. Planul tău va fi la fel — fără compromisuri, construit pe adevăr.'},
+
+  {id:'enc_coaching_complet', cat:'closing', loc:['complet_results'],
+    match: function(c){ return c.tone.motivation==='coaching'; },
+    text: 'Ai oferit toate informațiile necesare. Acum noi facem partea noastră — construim planul care te duce acolo.'},
+
+  {id:'enc_nurturing_res', cat:'closing', loc:['mini_results','complet_results'],
+    match: function(c){ return c.tone.motivation==='nurturing' && c.tone.vulnerability!=='protective'; },
+    text: 'Ești pe drumul bun. Nu contează cât de repede mergi — contează că mergi.'},
+
+  // ── CLOSING GENERAL — vulnerability-based fallback ─────────────
+
+  {id:'enc_protective_res', cat:'closing', loc:['mini_results','complet_results'],
     match: function(c){ return c.tone.vulnerability==='protective'; },
     text: 'Nu trebuie să faci nimic perfect. Trebuie doar să continui — în ritmul tău, când poți.'},
 
-  {id:'enc_warm', cat:'closing', loc:['mini_results','complet_results'],
+  {id:'enc_warm_res', cat:'closing', loc:['mini_results','complet_results'],
     match: function(c){ return c.tone.vulnerability==='warm'; },
     text: 'Ai luat deja cea mai grea decizie: să fii sinceră cu tine. Tot ce urmează e mai ușor.'},
 
-  {id:'enc_direct', cat:'closing', loc:['mini_results','complet_results'],
+  {id:'enc_direct_res', cat:'closing', loc:['mini_results','complet_results'],
     match: function(c){ return c.tone.vulnerability==='direct'; },
     text: 'Ai datele. Ai direcția. Acum e momentul să transformi claritatea în acțiune.'},
 
   {id:'enc_trans_gentle', cat:'closing', loc:['transition'],
     match: function(c){ return c.tone.pace==='gentle'; },
     text: 'Ia-ți timpul cu fiecare răspuns. Nu e nicio grabă — fiecare detaliu ne ajută să te protejăm mai bine.'},
+
+  {id:'enc_trans_structured', cat:'closing', loc:['transition'],
+    match: function(c){ return c.tone.pace==='structured'; },
+    text: 'Răspunsurile tale construiesc un plan precis. Fiecare secțiune adaugă un strat de claritate.'},
 
   {id:'enc_trans_ambitious', cat:'closing', loc:['transition'],
     match: function(c){ return c.tone.pace==='ambitious'; },

@@ -236,11 +236,29 @@ function goNext(){
   setTimeout(function(){ _goNextLock = false; }, 450);
   var steps = getActiveSteps();
   var s = getCurrentStep();
+
+  // B4: JS-level validation guards — block advance if input invalid
+  var P=STATE.profile; var A=STATE.ans;
+  if(s.type==='text'&&!P[s.id]){ _goNextLock=false; return; }
+  if(s.type==='number'){
+    var nv=P[s.id]; if(nv===undefined||nv===null||isNaN(nv)){ _goNextLock=false; return; }
+    if(s.min!==undefined&&nv<s.min){ _goNextLock=false; return; }
+    if(s.max!==undefined&&nv>s.max){ _goNextLock=false; return; }
+  }
+  if(s.type==='measures'&&!(P.height>100&&P.height<250&&P.weight>30&&P.weight<250)){ _goNextLock=false; return; }
+  if(s.type==='activity'&&P.activity===undefined){ _goNextLock=false; return; }
+  if(s.type==='cards'&&P[s.id]===undefined){ _goNextLock=false; return; }
+  if(s.type==='gdpr_email'&&!P.gdpr){ _goNextLock=false; return; }
+  if(s.type==='single'&&A[s.id]===undefined){ _goNextLock=false; return; }
+  if(s.type==='multi'&&(!A[s.id]||A[s.id].length===0)){ _goNextLock=false; return; }
+  if(s.type==='scale'&&A[s.id]===undefined){ _goNextLock=false; return; }
+  if(s.type==='textarea'&&!(A[s.id]||'').trim()){ _goNextLock=false; return; }
+
   if(s.type==='welcome'||s.type==='transition'||s.type==='mini_results'||s.type==='complet_results'){
-    // handled by button
+    // pass-through: handled by button
   }
   if(s.type==='welcome'){try{gtag('event','questionnaire_start',{event_category:'funnel'});fbq('trackCustom','QuestionnaireStart');}catch(e){}}
-  if(s.type==='gdpr_email'&&STATE.profile.email&&STATE.profile.email.includes('@')){try{gtag('event','email_provided',{event_category:'funnel',has_email:true});fbq('trackCustom','EmailProvided',{has_email:true});}catch(e){}}
+  if(s.type==='gdpr_email'&&P.email&&P.email.includes('@')){try{gtag('event','email_provided',{event_category:'funnel',has_email:true});fbq('trackCustom','EmailProvided',{has_email:true});}catch(e){}}
   if(STATE.step < steps.length-1){
     STATE.step++;
     if(STATE.phase==='MINI'){var ns=steps[STATE.step];try{gtag('event','mini_step',{event_category:'funnel',step_id:ns.id,step_index:STATE.step});fbq('trackCustom','MiniStep',{step_id:ns.id,step_index:STATE.step});}catch(e){}}
@@ -328,26 +346,8 @@ function render(){
   var A=STATE.ans;
   var resetHtml=hasSavedState()?'<div style="text-align:center;margin-top:24px"><a href="javascript:void(0)" onclick="resetState()" style="font-size:0.75rem;color:rgba(255,255,255,0.3);text-decoration:underline;cursor:pointer">'+COPY.ui.resetButton+'</a></div>':'';
 
-  // Dispatch to step-type renderer
-  var RENDERERS = {
-    welcome:          function(){ return renderWelcome(s, P, btn, resetHtml); },
-    text:             function(){ return renderTextInput(s, P, btn); },
-    number:           function(){ return renderNumberInput(s, P, btn); },
-    measures:         function(){ return renderMeasures(s, P, btn); },
-    activity:         function(){ return renderActivity(s, P, btn); },
-    cards:            function(){ return renderCards(s, P, btn); },
-    gdpr_email:       function(){ return renderGdprEmail(s, P, btn); },
-    mini_results:     function(){ return renderMiniResults(s, P, A, btn, resetHtml); },
-    transition:       function(){ return renderTransition(s, P, A, btn); },
-    single:           function(){ return renderSingle(s, A, btn); },
-    multi:            function(){ return renderMulti(s, A, btn); },
-    scale:            function(){ return renderScale(s, A, btn); },
-    textarea:         function(){ return renderTextarea(s, A, btn); },
-    complet_results:  function(){ return renderCompletResults(s, P, A, btn, resetHtml); }
-  };
-
-  var renderer = RENDERERS[s.type];
-  if(renderer) main.innerHTML = renderer();
+  // Dispatch to per-type renderer (RENDERERS map lives in CYB_Render.js)
+  main.innerHTML = dispatchRender({s:s, P:P, A:A, btn:btn, resetHtml:resetHtml});
 
   saveState();
   setTimeout(postHeight,50);
@@ -379,6 +379,10 @@ function restoreState(){
     STATE.profile=s.profile;
     STATE.ans=s.ans;
     STATE.phase=s.phase;
+    // C1: restore dedup flags to prevent double email on refresh
+    if(s._miniEmailSent) STATE._miniEmailSent=true;
+    if(s._completEmailSent) STATE._completEmailSent=true;
+    if(s._completResultsTracked) STATE._completResultsTracked=true;
     var steps=getActiveSteps();
     STATE.step=Math.min(s.step,steps.length-1);
   }catch(e){}
