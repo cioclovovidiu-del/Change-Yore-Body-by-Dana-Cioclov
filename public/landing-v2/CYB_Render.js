@@ -466,6 +466,8 @@ function renderCompletResults(s, P, A, btn, resetHtml) {
           '<div><span style="color:var(--text)">' + PL.budget + '</span> <strong style="color:white">' + (CR.budgetOptions[A.q19 || 1] || '') + ' RON</strong></div>' +
           '<div><span style="color:var(--text)">' + PL.motivation + '</span> <strong style="color:white">' + (A.q21 || 7) + '/10</strong></div>' +
           '<div><span style="color:var(--text)">' + PL.equipment + '</span> <strong style="color:white">' + ((A.q9 || []).length) + ' tipuri</strong></div>' +
+          '<div><span style="color:var(--text)">' + PL.allergies + '</span> <strong style="color:white">' + (function(){ var al=A.q19b||[]; if(al.length===0||al.indexOf(6)!==-1) return CR.allergyOptions[6]; return al.map(function(i){return CR.allergyOptions[i]||'';}).filter(Boolean).join(', '); })() + '</strong></div>' +
+          '<div><span style="color:var(--text)">' + PL.cookTime + '</span> <strong style="color:white">' + (CR.cookTimeOptions[A.q19c !== undefined ? A.q19c : 3] || '') + '</strong></div>' +
         '</div>' +
       '</div>' +
     '</div>' +

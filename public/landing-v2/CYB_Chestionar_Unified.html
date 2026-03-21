@@ -270,7 +270,7 @@ function goNext(){
   if(s.type==='single'&&A[s.id]===undefined){ _goNextLock=false; return; }
   if(s.type==='multi'&&(!A[s.id]||A[s.id].length===0)){ _goNextLock=false; return; }
   if(s.type==='scale'&&A[s.id]===undefined){ _goNextLock=false; return; }
-  if(s.type==='textarea'&&!(A[s.id]||'').trim()){ _goNextLock=false; return; }
+  if(s.type==='textarea'&&!s.optional&&!(A[s.id]||'').trim()){ _goNextLock=false; return; }
 
   if(s.type==='welcome'||s.type==='transition'||s.type==='mini_results'||s.type==='complet_results'){
     // pass-through: handled by button

@@ -169,6 +169,17 @@ var STEPS_COMPLET = [
     ...COPY.q('q19'),
     opts:['Sub 150 RON','150-250 RON','250-400 RON','Peste 400 RON']},
 
+  {id:'q19b', block:'Alimentația Ta', blockColor:'purple', type:'multi',
+    ...COPY.q('q19b'),
+    opts:['Lactoză / Lactate','Gluten','Nuci / Arahide','Ouă','Pește / Fructe de mare','Soia','Nu am alergii sau intoleranțe']},
+
+  {id:'q19c', block:'Alimentația Ta', blockColor:'purple', type:'single',
+    ...COPY.q('q19c'),
+    opts:['Sub 15 minute','15-30 minute','30-45 minute','Peste 45 minute','Nu gătesc (rețete fără gătit)']},
+
+  {id:'q19d', block:'Alimentația Ta', blockColor:'purple', type:'textarea',
+    ...COPY.q('q19d'), optional:true},
+
   // === BLOCK TRANSITION: MOTIVAȚIE ===
   {id:'trans_5', type:'transition', block:'Motivație', blockColor:'coral',
     ...COPY.t('trans_5')},
