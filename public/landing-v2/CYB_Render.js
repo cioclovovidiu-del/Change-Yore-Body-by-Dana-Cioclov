@@ -136,16 +136,18 @@ function renderMiniResults(s, P, A, btn, resetHtml) {
   // Lock CTA area for 2 seconds to ensure message is read
   setTimeout(function() { _unlockCta('miniCtaZone', 'miniReadHint', 0); }, 2000);
 
-  var _signals = interpretSignals(P, {});
-  var _resolved = resolveRoute(P, _signals);
-  var _msgVal = selectMessage({route: _resolved.route, signals: _signals, purpose: 'VALIDATION', screenContext: 'ONBOARDING'});
-  var _msgRes = selectMessage({route: _resolved.route, signals: _signals, purpose: 'RESULTS', screenContext: 'RESULTS'});
-
-  // Psych layer: try flow message, fallback to engine message
-  var _psychCtx = buildPsychContext(P, _signals, _resolved, {stress: calcStressScore({}), hormonal: calcHormonalScore(P, {})}, null, [], {}, {});
-  var _psychMsg = buildFlowMessage(_psychCtx, 'mini_results');
-  var _valText = _psychMsg || personalize(_msgVal.text, P.name);
-  var _resText = personalize(_msgRes.text, P.name);
+  var _valText = '', _resText = '';
+  try {
+    var _signals = interpretSignals(P, {});
+    var _resolved = resolveRoute(P, _signals);
+    var _msgVal = selectMessage({route: _resolved.route, signals: _signals, purpose: 'VALIDATION', screenContext: 'ONBOARDING'});
+    var _msgRes = selectMessage({route: _resolved.route, signals: _signals, purpose: 'RESULTS', screenContext: 'RESULTS'});
+    // Psych layer: try flow message, fallback to engine message
+    var _psychCtx = buildPsychContext(P, _signals, _resolved, {stress: calcStressScore({}), hormonal: calcHormonalScore(P, {})}, null, [], {}, {});
+    var _psychMsg = buildFlowMessage(_psychCtx, 'mini_results');
+    _valText = _psychMsg || personalize(_msgVal.text, P.name);
+    _resText = personalize(_msgRes.text, P.name);
+  } catch(e) { _valText = 'Ești în locul potrivit. Hai să construim împreună.'; _resText = _valText; }
 
   var bmi = calcBMI(P.weight, P.height);
   var bmr = calcBMR(P.weight, P.height, P.age);
@@ -247,16 +249,17 @@ function renderTransition(s, P, A, btn) {
   if (s.miniResult) {
     miniHTML = '<div class="mini-result"><div class="mini-val">' + bmiT.toFixed(1) + '</div><div class="mini-lbl">' + COPY.complet.ui.miniResultLabel + '</div></div>';
   }
-  var _tBlock = _transBlockMap[s.id] || null;
-  var _tSig = interpretSignals(P, A);
-  var _tRoute = resolveRoute(P, _tSig);
-  var _tMsg = selectMessage({route: _tRoute.route, signals: _tSig, purpose: 'TRANSITION', screenContext: 'ONBOARDING', block: _tBlock});
-  var _tEngineBody = _tMsg.fallback ? s.body : personalize(_tMsg.text, P.name);
-
-  // Psych layer: try flow message, fallback to engine message
-  var _tPsychCtx = buildPsychContext(P, _tSig, _tRoute, {stress: calcStressScore(A), hormonal: calcHormonalScore(P, A)}, null, [], A, {});
-  var _tPsychMsg = buildFlowMessage(_tPsychCtx, 'transition');
-  var _tBody = _tPsychMsg || _tEngineBody;
+  var _tBody = s.body || '';
+  try {
+    var _tBlock = _transBlockMap[s.id] || null;
+    var _tSig = interpretSignals(P, A);
+    var _tRoute = resolveRoute(P, _tSig);
+    var _tMsg = selectMessage({route: _tRoute.route, signals: _tSig, purpose: 'TRANSITION', screenContext: 'ONBOARDING', block: _tBlock});
+    var _tEngineBody = _tMsg.fallback ? s.body : personalize(_tMsg.text, P.name);
+    var _tPsychCtx = buildPsychContext(P, _tSig, _tRoute, {stress: calcStressScore(A), hormonal: calcHormonalScore(P, A)}, null, [], A, {});
+    var _tPsychMsg = buildFlowMessage(_tPsychCtx, 'transition');
+    _tBody = _tPsychMsg || _tEngineBody;
+  } catch(e) { /* keep fallback s.body */ }
 
   return '<div class="slide active"><div class="block-trans">' +
     '<div class="block-tag ' + s.blockColor + '">' + s.block + '</div>' +
@@ -332,33 +335,38 @@ function renderCompletResults(s, P, A, btn, resetHtml) {
   // Lock CTA area for 3.5 seconds to ensure message is read
   setTimeout(function() { _unlockCta('completCtaZone', 'completReadHint', 0); }, 3500);
 
-  var _cSig = interpretSignals(P, A);
-  var _cRoute = resolveRoute(P, _cSig);
-  var _cMsgVal = selectMessage({route: _cRoute.route, signals: _cSig, purpose: 'VALIDATION', screenContext: 'ONBOARDING'});
-  var _cMsgRes = selectMessage({route: _cRoute.route, signals: _cSig, purpose: 'RESULTS', screenContext: 'RESULTS'});
-  var _cResText = personalize(_cMsgRes.text, P.name);
-
-  var cStress = calcStressScore(A);
-  var cHormonal = calcHormonalScore(P, A);
-
-  // Psych layer: try flow message, fallback to engine message
-  var _cMetaProfile = getMetabolicProfile(P, A, COPY.metabolicProfiles, COPY.fallback.metabolicProfile);
-  var _cTags = getSafetyTags(P, A);
-  var _cPsychCtx = buildPsychContext(P, _cSig, _cRoute, {stress: cStress, hormonal: cHormonal}, _cMetaProfile, _cTags, A, {});
-  var _cPsychMsg = buildFlowMessage(_cPsychCtx, 'complet_results');
-  var _cValText = _cPsychMsg || personalize(_cMsgVal.text, P.name);
+  var _cValText = '', _cResText = '', cStress = 0, cHormonal = 0;
+  var _cMetaProfile = null, _cTags = [], _cPsychCtx = null;
+  try {
+    var _cSig = interpretSignals(P, A);
+    var _cRoute = resolveRoute(P, _cSig);
+    var _cMsgVal = selectMessage({route: _cRoute.route, signals: _cSig, purpose: 'VALIDATION', screenContext: 'ONBOARDING'});
+    var _cMsgRes = selectMessage({route: _cRoute.route, signals: _cSig, purpose: 'RESULTS', screenContext: 'RESULTS'});
+    _cResText = personalize(_cMsgRes.text, P.name);
+    cStress = calcStressScore(A);
+    cHormonal = calcHormonalScore(P, A);
+    _cMetaProfile = getMetabolicProfile(P, A, COPY.metabolicProfiles, (COPY.fallback||{}).metabolicProfile||{name:'Profil General',desc:'Profil metabolic standard.',color:'var(--teal-glow)'});
+    _cTags = getSafetyTags(P, A);
+    _cPsychCtx = buildPsychContext(P, _cSig, _cRoute, {stress: cStress, hormonal: cHormonal}, _cMetaProfile, _cTags, A, {});
+    var _cPsychMsg = buildFlowMessage(_cPsychCtx, 'complet_results');
+    _cValText = _cPsychMsg || personalize(_cMsgVal.text, P.name);
+  } catch(e) {
+    _cValText = _cValText || 'Ești în locul potrivit. Hai să construim împreună.';
+    _cResText = _cResText || _cValText;
+    if(!_cMetaProfile) _cMetaProfile = {name:'Profil General',desc:'Profil metabolic standard.',color:'var(--teal-glow)'};
+  }
 
   // Personal letter (hardened + policy-gated)
   var _cLetter = null;
-  var _cLetterCtx = null;
-  var _cLetterPolicy = null;
-  if (typeof getPersonalLetterPolicy === 'function') {
-    _cLetterCtx = buildPersonalLetterContext(P, _cSig, _cRoute, {stress: cStress, hormonal: cHormonal}, _cMetaProfile, _cTags, A, {}, _cPsychCtx.tone);
-    _cLetterPolicy = getPersonalLetterPolicy(_cLetterCtx);
-    if (_cLetterPolicy.allowed) {
-      try { _cLetter = buildPersonalLetter(_cLetterCtx); } catch(e) { _cLetter = null; }
+  try {
+    if (typeof getPersonalLetterPolicy === 'function' && _cPsychCtx) {
+      var _cLetterCtx = buildPersonalLetterContext(P, _cSig, _cRoute, {stress: cStress, hormonal: cHormonal}, _cMetaProfile, _cTags, A, {}, _cPsychCtx.tone);
+      var _cLetterPolicy = getPersonalLetterPolicy(_cLetterCtx);
+      if (_cLetterPolicy.allowed) {
+        _cLetter = buildPersonalLetter(_cLetterCtx);
+      }
     }
-  }
+  } catch(e) { _cLetter = null; }
   var _cLetterHtml = '';
   if (_cLetter && typeof _cLetter.text === 'string' && _cLetter.text.length >= 100) {
     // Strip any leftover [Prenume] placeholders (name safety)

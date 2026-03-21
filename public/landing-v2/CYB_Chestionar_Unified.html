@@ -323,8 +323,10 @@ function checkMeasures(){
 
 // ── RENDER (dispatcher) ─────────────────────────────────────────────
 function render(){
+  try{
   var steps = getActiveSteps();
   var s = getCurrentStep();
+  if(!s||!s.type){document.getElementById('main').innerHTML='<div class="slide active" style="text-align:center;padding:40px 20px;color:var(--text)">Eroare de navigare. <a href="javascript:void(0)" onclick="resetState()" style="color:var(--teal-glow)">Resetează</a></div>';return;}
   var isResults = s.type==='mini_results'||s.type==='complet_results';
   var pct = STATE.step===0&&s.type==='welcome'?0:isResults?100:Math.round((STATE.step/(steps.length-1))*100);
   document.getElementById('progBar').style.width=pct+'%';
@@ -334,10 +336,10 @@ function render(){
   var info='';
   if(STATE.phase==='MINI' && s.type!=='welcome' && s.type!=='mini_results'){
     info=(STATE.step)+' / '+(steps.length-2);
-  } else if(STATE.phase==='COMPLET' && s.id.startsWith('q')){
+  } else if(STATE.phase==='COMPLET' && s.id && s.id.startsWith('q')){
     info=curQ(steps,STATE.step)+'/'+totalQ(steps);
   } else if(s.type==='transition'){
-    info=s.block;
+    info=s.block||'';
   }
   document.getElementById('stepInfo').textContent=info;
 
@@ -359,6 +361,9 @@ function render(){
 
   saveState();
   setTimeout(postHeight,50);
+  }catch(renderErr){
+    try{document.getElementById('main').innerHTML='<div class="slide active" style="text-align:center;padding:40px 20px;color:var(--text)">A apărut o eroare. <a href="javascript:void(0)" onclick="resetState()" style="color:var(--teal-glow)">Resetează chestionarul</a></div>';}catch(e2){}
+  }
 }
 
 // ── IFRAME HEIGHT SYNC ──────────────────────────────────────────────
