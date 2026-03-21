@@ -2,8 +2,10 @@
 <html lang="ro">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CYB — Chestionar Unificat</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
 <!-- GA4 -->
@@ -191,6 +193,9 @@ body{font-family:var(--sans);color:var(--text);background:var(--dark);min-height
 
 /* RESPONSIVE */
 @media(max-width:480px){.welcome h1{font-size:1.6rem}.q-title{font-size:1.2rem}.result-big{font-size:2.2rem}.block-trans h2{font-size:1.3rem}.scale-btn{width:38px;height:38px;font-size:0.85rem}}
+
+/* H1: Focus-visible for keyboard users */
+.card:focus-visible,.opt:focus-visible,.chk:focus-visible,.activity-opt:focus-visible,.scale-btn:focus-visible,.btn:focus-visible{outline:2px solid var(--teal-glow);outline-offset:2px}
 </style>
 </head>
 <body>
@@ -199,8 +204,8 @@ body{font-family:var(--sans);color:var(--text);background:var(--dark);min-height
     <div class="logo">Change Your Body <span>by Dana Cioclov</span></div>
     <div class="step-info" id="stepInfo"></div>
   </div>
-  <div class="progress-wrap"><div class="progress-bar" id="progBar"></div></div>
-  <div class="main" id="main"></div>
+  <div class="progress-wrap" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Progres chestionar"><div class="progress-bar" id="progBar"></div></div>
+  <main class="main" id="main"></main>
   <div class="btn-row">
     <button class="btn btn-back" id="btnBack" onclick="goBack()" style="visibility:hidden">← Înapoi</button>
     <button class="btn btn-next" id="btnNext" onclick="goNext()">Începe →</button>
@@ -323,6 +328,7 @@ function render(){
   var isResults = s.type==='mini_results'||s.type==='complet_results';
   var pct = STATE.step===0&&s.type==='welcome'?0:isResults?100:Math.round((STATE.step/(steps.length-1))*100);
   document.getElementById('progBar').style.width=pct+'%';
+  var _pw=document.getElementById('progBar').parentNode;if(_pw)_pw.setAttribute('aria-valuenow',pct);
 
   // Step info
   var info='';
@@ -420,6 +426,17 @@ document.addEventListener('focusin', function(e){
     setTimeout(function(){
       try{ e.target.scrollIntoView({block:'center',behavior:'smooth'}); }catch(ex){}
     }, 300);
+  }
+});
+
+// H1: Keyboard delegation — Enter/Space triggers click on interactive elements
+document.addEventListener('keydown', function(e){
+  if(e.key==='Enter'||e.key===' '){
+    var t=e.target;
+    if(t.matches('.card,.opt,.chk,.activity-opt,[role="button"],[role="checkbox"]')){
+      e.preventDefault();
+      t.click();
+    }
   }
 });
 </script>

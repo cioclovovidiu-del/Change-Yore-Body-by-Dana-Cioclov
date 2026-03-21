@@ -42,7 +42,7 @@ function renderTextInput(s, P, btn) {
     '<div class="q-label">' + (s.label || '') + '</div>' +
     '<div class="q-title">' + (s.title || '') + '</div>' +
     '<div class="q-sub">' + (s.sub || '') + '</div>' +
-    '<input class="text-input" type="text" placeholder="' + (s.ph || '') + '" value="' + (P[s.id] || '') + '" oninput="STATE.profile[\'' + s.id + '\']=this.value;document.getElementById(\'btnNext\').disabled=!this.value.trim();showEmo(\'' + s.id + '\')">' +
+    '<input class="text-input" type="text" placeholder="' + (s.ph || '') + '" value="' + (P[s.id] || '') + '" aria-label="' + (s.title || s.id) + '" oninput="STATE.profile[\'' + s.id + '\']=this.value;document.getElementById(\'btnNext\').disabled=!this.value.trim();showEmo(\'' + s.id + '\')">' +
     '<div class="emo-msg ' + (P[s.id] ? 'show' : '') + '" id="emo">' + (P[s.id] && emoMessages[s.id] ? emoMessages[s.id](P) : '') + '</div>' +
   '</div>';
 }
@@ -56,7 +56,7 @@ function renderNumberInput(s, P, btn) {
     '<div class="q-label">' + (s.label || '') + '</div>' +
     '<div class="q-title">' + (s.title || '') + '</div>' +
     '<div class="q-sub">' + (s.sub || '') + '</div>' +
-    '<input class="number-input" type="number" placeholder="' + (s.ph || '') + '" min="' + (s.min || '') + '" max="' + (s.max || '') + '" value="' + (P[s.id] || '') + '" oninput="var v=parseInt(this.value);STATE.profile[\'' + s.id + '\']=isNaN(v)?undefined:v;var ok=!isNaN(v)' + (s.min !== undefined ? '&&v>=' + s.min : '') + (s.max !== undefined ? '&&v<=' + s.max : '') + ';document.getElementById(\'btnNext\').disabled=!ok;if(ok)showEmo(\'' + s.id + '\')">' +
+    '<input class="number-input" type="number" placeholder="' + (s.ph || '') + '" min="' + (s.min || '') + '" max="' + (s.max || '') + '" value="' + (P[s.id] || '') + '" aria-label="' + (s.title || s.id) + '" oninput="var v=parseInt(this.value);STATE.profile[\'' + s.id + '\']=isNaN(v)?undefined:v;var ok=!isNaN(v)' + (s.min !== undefined ? '&&v>=' + s.min : '') + (s.max !== undefined ? '&&v<=' + s.max : '') + ';document.getElementById(\'btnNext\').disabled=!ok;if(ok)showEmo(\'' + s.id + '\')">' +
     '<div class="emo-msg" id="emo"></div>' +
   '</div>';
 }
@@ -84,7 +84,7 @@ function renderActivity(s, P, btn) {
     '<div class="q-label">' + s.label + '</div>' +
     '<div class="q-title">' + s.title + '</div>' +
     '<div class="q-sub">' + s.sub + '</div>' +
-    '<div class="activity-opts">' + acts.map(function(a, i) { return '<div class="activity-opt ' + (P.activity === i ? 'selected' : '') + '" onclick="STATE.profile.activity=' + i + ';render()">' + a + '</div>' }).join('') + '</div>' +
+    '<div class="activity-opts">' + acts.map(function(a, i) { return '<div class="activity-opt ' + (P.activity === i ? 'selected' : '') + '" role="button" tabindex="0" onclick="STATE.profile.activity=' + i + ';render()">' + a + '</div>' }).join('') + '</div>' +
     '<div class="emo-msg ' + (P.activity !== undefined ? 'show' : '') + '" id="emo">' + (P.activity !== undefined && emoMessages.activity ? emoMessages.activity(P) : '') + '</div>' +
   '</div>';
 }
@@ -96,7 +96,7 @@ function renderCards(s, P, btn) {
     '<div class="q-label">' + s.label + '</div>' +
     '<div class="q-title">' + s.title + '</div>' +
     '<div class="q-sub">' + s.sub + '</div>' +
-    '<div class="cards">' + s.opts.map(function(o, i) { return '<div class="card ' + (P[s.id] === i ? 'selected' : '') + '" onclick="STATE.profile[\'' + s.id + '\']=' + i + ';render();setTimeout(goNext,400)"><div class="card-icon">' + o.icon + '</div><div class="card-text"><h4>' + o.title + '</h4><p>' + o.desc + '</p></div></div>' }).join('') + '</div>' +
+    '<div class="cards">' + s.opts.map(function(o, i) { return '<div class="card ' + (P[s.id] === i ? 'selected' : '') + '" role="button" tabindex="0" onclick="STATE.profile[\'' + s.id + '\']=' + i + ';render();setTimeout(goNext,400)"><div class="card-icon">' + o.icon + '</div><div class="card-text"><h4>' + o.title + '</h4><p>' + o.desc + '</p></div></div>' }).join('') + '</div>' +
     '<div class="emo-msg ' + (P[s.id] !== undefined ? 'show' : '') + '" id="emo">' + (P[s.id] !== undefined && emoMessages[s.id] ? emoMessages[s.id](P) : '') + '</div>' +
   '</div>';
 }
@@ -109,8 +109,8 @@ function renderGdprEmail(s, P, btn) {
     '<div class="q-label">' + s.label + '</div>' +
     '<div class="q-title">' + s.title + '</div>' +
     '<div class="q-sub">' + s.sub + '</div>' +
-    '<input class="email-input" type="email" placeholder="' + s.ph + '" value="' + (P.email || '') + '" oninput="STATE.profile.email=this.value" style="margin-bottom:16px">' +
-    '<div class="chk ' + (P.gdpr ? 'sel' : '') + '" onclick="STATE.profile.gdpr=!STATE.profile.gdpr;render()" style="margin-top:4px">' +
+    '<input class="email-input" type="email" placeholder="' + s.ph + '" value="' + (P.email || '') + '" aria-label="Email" oninput="STATE.profile.email=this.value" style="margin-bottom:16px">' +
+    '<div class="chk ' + (P.gdpr ? 'sel' : '') + '" role="checkbox" aria-checked="' + (!!P.gdpr) + '" tabindex="0" onclick="STATE.profile.gdpr=!STATE.profile.gdpr;render()" style="margin-top:4px">' +
       '<div class="chk-box"></div>' +
       '<span style="font-size:0.82rem;line-height:1.5">' + s.consent + '</span>' +
     '</div>' +
@@ -275,7 +275,7 @@ function renderSingle(s, A, btn) {
     '<div class="q-title">' + s.title + '</div>' +
     (s.sub ? '<div class="q-sub">' + s.sub + '</div>' : '') +
     (s.note ? '<div class="q-note">' + s.note + '</div>' : '') +
-    '<div class="opts">' + s.opts.map(function(o, i) { return '<div class="opt ' + (A[s.id] === i ? 'sel' : '') + '" onclick="STATE.ans[\'' + s.id + '\']=' + i + ';render();setTimeout(goNext,350)"><div class="opt-letter">' + letters[i] + '</div><span>' + o + '</span></div>' }).join('') + '</div>' +
+    '<div class="opts">' + s.opts.map(function(o, i) { return '<div class="opt ' + (A[s.id] === i ? 'sel' : '') + '" role="button" tabindex="0" onclick="STATE.ans[\'' + s.id + '\']=' + i + ';render();setTimeout(goNext,350)"><div class="opt-letter">' + letters[i] + '</div><span>' + o + '</span></div>' }).join('') + '</div>' +
   '</div>';
 }
 
@@ -287,7 +287,7 @@ function renderMulti(s, A, btn) {
     '<div class="q-title">' + s.title + '</div>' +
     (s.sub ? '<div class="q-sub">' + s.sub + '</div>' : '') +
     (s.note ? '<div class="q-note">' + s.note + '</div>' : '') +
-    '<div>' + s.opts.map(function(o, i) { return '<div class="chk ' + ((A[s.id] || []).includes(i) ? 'sel' : '') + '" onclick="toggleChk(\'' + s.id + '\',' + i + ')"><div class="chk-box"></div><span>' + o + '</span></div>' }).join('') + '</div>' +
+    '<div>' + s.opts.map(function(o, i) { return '<div class="chk ' + ((A[s.id] || []).includes(i) ? 'sel' : '') + '" role="checkbox" aria-checked="' + ((A[s.id] || []).includes(i)) + '" tabindex="0" onclick="toggleChk(\'' + s.id + '\',' + i + ')"><div class="chk-box"></div><span>' + o + '</span></div>' }).join('') + '</div>' +
   '</div>';
 }
 
@@ -314,7 +314,7 @@ function renderTextarea(s, A, btn) {
     '<div class="block-tag ' + s.blockColor + '">' + s.block + '</div>' +
     '<div class="q-title">' + s.title + '</div>' +
     (s.sub ? '<div class="q-sub">' + s.sub + '</div>' : '') +
-    '<textarea class="ta" placeholder="' + COPY.complet.ui.textareaPlaceholder + '" oninput="STATE.ans[\'' + s.id + '\']=this.value;document.getElementById(\'btnNext\').disabled=!this.value.trim()">' + (A[s.id] || '') + '</textarea>' +
+    '<textarea class="ta" aria-label="' + (s.title || 'Răspuns') + '" placeholder="' + COPY.complet.ui.textareaPlaceholder + '" oninput="STATE.ans[\'' + s.id + '\']=this.value;document.getElementById(\'btnNext\').disabled=!this.value.trim()">' + (A[s.id] || '') + '</textarea>' +
   '</div>';
 }
 
