@@ -461,6 +461,32 @@ function renderCompletResults(s, P, A, btn, resetHtml) {
         '</div>' +
       '</div>' +
     '</div>' +
+    // B6: Recipe preview (guarded)
+    (function() {
+      try {
+        if (typeof buildDayPlan === 'function' && typeof formatDayPlanHtml === 'function') {
+          var _rPlan = buildDayPlan(P, A);
+          if (_rPlan && _rPlan.slots) {
+            var _rHtml = formatDayPlanHtml(_rPlan);
+            if (_rHtml) return '<div class="res-section"><h3>🍽️ Planul tău alimentar — Ziua model</h3><div class="res-card">' + _rHtml + '</div></div>';
+          }
+        }
+      } catch(e) {}
+      return '';
+    })() +
+    // B6: Training preview (guarded)
+    (function() {
+      try {
+        if (typeof buildTrainingPlan === 'function' && typeof formatTrainingPlanHtml === 'function') {
+          var _tPlan = buildTrainingPlan(P, A);
+          if (_tPlan && _tPlan.sessions && _tPlan.sessions.length > 0) {
+            var _tHtml = formatTrainingPlanHtml(_tPlan);
+            if (_tHtml) return '<div class="res-section"><h3>💪 Planul tău de antrenament — Săptămâna 1</h3><div class="res-card">' + _tHtml + '</div></div>';
+          }
+        }
+      } catch(e) {}
+      return '';
+    })() +
     '<div style="text-align:center;padding:24px 0;border-top:1px solid rgba(255,255,255,0.06);margin-top:12px">' +
       '<p style="font-size:0.88rem;color:var(--text);line-height:1.8;margin-bottom:12px">' + _cResText + '</p>' +
       '<p style="margin-top:16px;font-size:0.88rem;font-style:italic;color:var(--teal-glow)">' + CR.finalQuote + '</p>' +
