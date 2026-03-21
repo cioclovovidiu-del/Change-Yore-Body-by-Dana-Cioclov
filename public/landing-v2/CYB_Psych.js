@@ -569,9 +569,9 @@ var LETTER_CONFIG = {
   // Minimum parts from composer to produce a letter
   MIN_COMPOSE_PARTS: 3,
 
-  // Final text word range
-  WORD_MIN: 180,
-  WORD_MAX: 420,
+  // Final text word range (B2 spec: 250-400)
+  WORD_MIN: 250,
+  WORD_MAX: 400,
 
   // Final text character minimum
   CHAR_MIN: 500,
@@ -1130,19 +1130,19 @@ var LETTER_FRAGMENTS = [
 
   {id:'cls_protective', sec:'closing',
     match: function(c){ return c.tone.vulnerability === 'protective'; },
-    text: 'Cu grijă și fără grabă,\nDaniela'},
+    text: 'Promisiunea mea e simplă: nu te voi forța, nu te voi judeca, nu te voi grăbi. Voi fi alături de tine exact în ritmul în care ai nevoie. Și dacă azi tot ce poți face e să citești această scrisoare — e suficient. Restul vine.\n\nCu grijă și fără grabă,\nDaniela'},
 
   {id:'cls_warm', sec:'closing',
     match: function(c){ return c.tone.vulnerability === 'warm'; },
-    text: 'Cu drag și cu un plan,\nDaniela'},
+    text: 'Îți promit un singur lucru: vei fi ascultată, văzută și ghidată fără să fii pusă pe un șablon. Planul tău e al tău — construit din povestea ta, nu din reguli generice. Și eu voi fi lângă tine la fiecare pas.\n\nCu drag și cu un plan,\nDaniela'},
 
   {id:'cls_direct', sec:'closing',
     match: function(c){ return c.tone.vulnerability === 'direct'; },
-    text: 'Te aștept pe cealaltă parte,\nDaniela'},
+    text: 'Nu-ți promit că va fi ușor. Îți promit că va fi clar, logic și construit pe realitatea ta. Iar rezultatele vor veni nu pentru că ai noroc, ci pentru că ai direcție. Următorul pas e al tău.\n\nTe aștept pe cealaltă parte,\nDaniela'},
 
   {id:'cls_general', sec:'closing',
     match: function(c){ return true; },
-    text: 'Sunt aici când ești pregătită,\nDaniela'}
+    text: 'Ceea ce-ți promit e că acest plan nu e o altă încercare oarbă. E prima abordare construită complet pe cine ești tu azi — cu tot ce ai trecut și tot ce simți. Și asta face toată diferența.\n\nSunt aici când ești pregătită,\nDaniela'}
 ];
 
 // ── LETTER FRAGMENT LIBRARY (introspection) ─────────────────────────
@@ -1489,6 +1489,17 @@ function buildPersonalLetter(letterContext) {
     }
     return null;
   }
+}
+
+// ── composeLetter (B2 API) ──────────────────────────────────────────
+// Single entry point matching B2 spec signature.
+// Returns { text: string, sections: object, meta: object } or null.
+function composeLetter(profile, signals, route, scores, metabolicProfile, safetyTags, answers, completionData) {
+  try {
+    var routeData = typeof route === 'string' ? { route: route } : (route || {});
+    var ctx = buildPersonalLetterContext(profile, signals, routeData, scores, metabolicProfile, safetyTags, answers, completionData);
+    return buildPersonalLetter(ctx);
+  } catch(e) { return null; }
 }
 
 // ── AUDIT / TEST HARNESS ────────────────────────────────────────────

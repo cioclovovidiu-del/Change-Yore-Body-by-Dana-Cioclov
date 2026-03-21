@@ -471,27 +471,76 @@ function renderCompletResults(s, P, A, btn, resetHtml) {
         '</div>' +
       '</div>' +
     '</div>' +
-    // B6: Recipe preview (guarded)
+    // B6: Recipe preview — Day 1 full + shopping list + blurred teaser
     (function() {
       try {
         if (typeof buildDayPlan === 'function' && typeof formatDayPlanHtml === 'function') {
           var _rPlan = buildDayPlan(P, A);
           if (_rPlan && _rPlan.slots) {
             var _rHtml = formatDayPlanHtml(_rPlan);
-            if (_rHtml) return '<div class="res-section"><h3>🍽️ Planul tău alimentar — Ziua model</h3><div class="res-card">' + _rHtml + '</div></div>';
+            if (_rHtml) {
+              var out = '<div class="res-section"><h3>🍽️ Planul tău alimentar — Ziua model</h3><div class="res-card">' + _rHtml + '</div></div>';
+              // Shopping list (B4)
+              try {
+                if (typeof shoppingList === 'function' && typeof formatShoppingListHtml === 'function') {
+                  var _sList = shoppingList(_rPlan);
+                  if (_sList && _sList.length > 0) {
+                    out += '<div class="res-section"><div class="res-card">' + formatShoppingListHtml(_sList) + '</div></div>';
+                  }
+                }
+              } catch(e2) {}
+              // Blurred teaser: remaining 6 days
+              out += '<div class="res-section" style="position:relative;overflow:hidden">' +
+                '<div style="filter:blur(6px);-webkit-filter:blur(6px);pointer-events:none;opacity:0.5">' +
+                  '<h3 style="font-size:0.9rem;color:var(--text);margin-bottom:6px">🍽️ Zilele 2–7 — Plan alimentar complet</h3>' +
+                  '<div class="res-card" style="min-height:90px">' +
+                    '<p style="font-size:13px;color:var(--text)">☀️ Prânz: Salată mediteraneană cu quinoa</p>' +
+                    '<p style="font-size:13px;color:var(--text)">🌙 Cină: Pui la cuptor cu legume de sezon</p>' +
+                    '<p style="font-size:13px;color:var(--text)">🌅 Mic dejun: Smoothie proteic cu fructe</p>' +
+                  '</div>' +
+                '</div>' +
+                '<div style="position:absolute;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;text-align:center">' +
+                  '<div style="background:rgba(15,15,20,0.7);padding:14px 24px;border-radius:12px;border:1px solid rgba(201,168,76,0.2)">' +
+                    '<p style="color:var(--gold);font-size:0.85rem;font-weight:600;margin:0">🔒 6 zile rămase</p>' +
+                    '<p style="color:var(--text);font-size:0.75rem;margin:4px 0 0">Deblochează planul complet cu CYB</p>' +
+                  '</div>' +
+                '</div>' +
+              '</div>';
+              return out;
+            }
           }
         }
       } catch(e) {}
       return '';
     })() +
-    // B6: Training preview (guarded)
+    // B6: Training preview — Day 1 full + blurred teaser
     (function() {
       try {
         if (typeof buildTrainingPlan === 'function' && typeof formatTrainingPlanHtml === 'function') {
           var _tPlan = buildTrainingPlan(P, A);
           if (_tPlan && _tPlan.sessions && _tPlan.sessions.length > 0) {
             var _tHtml = formatTrainingPlanHtml(_tPlan);
-            if (_tHtml) return '<div class="res-section"><h3>💪 Planul tău de antrenament — Săptămâna 1</h3><div class="res-card">' + _tHtml + '</div></div>';
+            if (_tHtml) {
+              var out = '<div class="res-section"><h3>💪 Planul tău de antrenament — Săptămâna 1</h3><div class="res-card">' + _tHtml + '</div></div>';
+              // Blurred teaser: remaining weeks
+              out += '<div class="res-section" style="position:relative;overflow:hidden">' +
+                '<div style="filter:blur(6px);-webkit-filter:blur(6px);pointer-events:none;opacity:0.5">' +
+                  '<h3 style="font-size:0.9rem;color:var(--text);margin-bottom:6px">💪 Săptămânile 2–12 — Progresie completă</h3>' +
+                  '<div class="res-card" style="min-height:90px">' +
+                    '<p style="font-size:13px;color:var(--text)">Ziua 1: Full Body — Nivel 2 (intensitate crescută)</p>' +
+                    '<p style="font-size:13px;color:var(--text)">Ziua 2: Lower Body — Forță progresivă</p>' +
+                    '<p style="font-size:13px;color:var(--text)">Ziua 3: Upper Body + Core — Circuit</p>' +
+                  '</div>' +
+                '</div>' +
+                '<div style="position:absolute;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;text-align:center">' +
+                  '<div style="background:rgba(15,15,20,0.7);padding:14px 24px;border-radius:12px;border:1px solid rgba(201,168,76,0.2)">' +
+                    '<p style="color:var(--gold);font-size:0.85rem;font-weight:600;margin:0">🔒 11 săptămâni rămase</p>' +
+                    '<p style="color:var(--text);font-size:0.75rem;margin:4px 0 0">Deblochează programul complet cu CYB</p>' +
+                  '</div>' +
+                '</div>' +
+              '</div>';
+              return out;
+            }
           }
         }
       } catch(e) {}
