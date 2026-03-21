@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CYB — Chestionar Unificat</title>
+<meta name="robots" content="noindex, nofollow">
+<title>Change Your Body — Chestionar Personalizat</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -67,11 +68,11 @@ body{font-family:var(--sans);color:var(--text);background:var(--dark);min-height
 /* TEXT/NUMBER/EMAIL INPUTS */
 .text-input,.number-input,.email-input{width:100%;padding:14px 18px;border-radius:12px;border:1.5px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.04);color:white;font-family:var(--sans);font-size:1rem;outline:none;transition:border-color 0.3s}
 .text-input:focus,.number-input:focus,.email-input:focus{border-color:var(--teal)}
-.number-input{text-align:center;font-size:1.6rem;font-weight:600;max-width:160px}
+.number-input{text-align:center;font-size:1.6rem;font-weight:600;max-width:160px;margin:0 auto;display:block}
 .number-row{display:flex;gap:16px;align-items:flex-end}
 .number-group{flex:1}
 .number-group label{display:block;font-size:0.75rem;color:var(--text);margin-bottom:6px}
-.number-group input{width:100%;text-align:center;font-size:1.4rem}
+.number-group .number-input{margin:0;max-width:none;width:100%;font-size:1.4rem}
 
 /* CARDS (MINI goal + moment) */
 .cards{display:flex;flex-direction:column;gap:10px}
@@ -185,14 +186,23 @@ body{font-family:var(--sans);color:var(--text);background:var(--dark);min-height
 /* BUTTONS */
 .btn-row{position:fixed;bottom:0;left:0;right:0;padding:12px 24px;padding-bottom:max(12px,env(safe-area-inset-bottom));display:flex;justify-content:space-between;align-items:center;background:rgba(15,25,35,0.95);backdrop-filter:blur(20px);border-top:1px solid rgba(42,165,160,0.06);z-index:100}
 .btn{padding:12px 28px;border-radius:50px;border:none;font-family:var(--sans);font-size:0.9rem;font-weight:600;cursor:pointer;transition:all 0.25s}
-.btn-back{background:transparent;color:rgba(255,255,255,0.3);border:1px solid rgba(255,255,255,0.08)}
+.btn-back{background:transparent;color:rgba(255,255,255,0.4);border:1px solid rgba(255,255,255,0.1)}
+.btn-back:active{color:rgba(255,255,255,0.6);border-color:rgba(255,255,255,0.2)}
 .btn-next{background:linear-gradient(135deg,var(--teal),var(--teal-dark));color:white;box-shadow:0 4px 16px rgba(42,165,160,0.25)}
-.btn-next:disabled{opacity:0.3;pointer-events:none}
+.btn-next:disabled{opacity:0.35;pointer-events:none;cursor:not-allowed}
 .btn-next:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 6px 20px rgba(42,165,160,0.35)}
+.btn-next:active:not(:disabled){transform:translateY(0);box-shadow:0 2px 8px rgba(42,165,160,0.2)}
 .btn-gold{background:linear-gradient(135deg,var(--gold),var(--gold-warm));color:white;box-shadow:0 4px 16px rgba(201,168,76,0.25)}
 
 /* RESPONSIVE */
-@media(max-width:480px){.welcome h1{font-size:1.6rem}.q-title{font-size:1.2rem}.result-big{font-size:2.2rem}.block-trans h2{font-size:1.3rem}.scale-btn{width:38px;height:38px;font-size:0.85rem}}
+/* H5: Active/tap states for touch feedback */
+.card:active{transform:scale(0.98);border-color:var(--teal)}
+.opt:active{transform:scale(0.98);border-color:var(--teal)}
+.chk:active{transform:scale(0.98)}
+.activity-opt:active{transform:scale(0.97);border-color:var(--teal)}
+.scale-btn:active:not(.sel){background:rgba(42,165,160,0.15);border-color:var(--teal)}
+
+@media(max-width:480px){.welcome h1{font-size:1.6rem}.q-title{font-size:1.2rem}.result-big{font-size:2.2rem}.block-trans h2{font-size:1.3rem}.scale-btn{width:40px;height:40px;font-size:0.85rem}}
 
 /* H1: Focus-visible for keyboard users */
 .card:focus-visible,.opt:focus-visible,.chk:focus-visible,.activity-opt:focus-visible,.scale-btn:focus-visible,.btn:focus-visible{outline:2px solid var(--teal-glow);outline-offset:2px}
@@ -362,6 +372,11 @@ function render(){
 
   saveState();
   setTimeout(postHeight,50);
+  // H5: auto-focus first input on text/number/email/textarea steps (saves one tap)
+  setTimeout(function(){
+    var fi=main.querySelector('.text-input,.number-input,.email-input,.ta');
+    if(fi&&!isResults){try{fi.focus({preventScroll:true});}catch(e){}}
+  },100);
   }catch(renderErr){
     try{document.getElementById('main').innerHTML='<div class="slide active" style="text-align:center;padding:40px 20px;color:var(--text)">A apărut o eroare. <a href="javascript:void(0)" onclick="resetState()" style="color:var(--teal-glow)">Resetează chestionarul</a></div>';}catch(e2){}
   }

@@ -27,6 +27,12 @@ export const metadata: Metadata = {
     locale: "ro_RO",
     type: "website",
   },
+  twitter: {
+    card: "summary_large_image",
+    title: "Change Your Body — Daniela Cioclov",
+    description:
+      "Chestionar personalizat de fitness și nutriție pentru femei 35+.",
+  },
 };
 
 export default function RootLayout({
