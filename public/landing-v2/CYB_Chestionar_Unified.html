@@ -223,7 +223,8 @@ body{font-family:var(--sans);color:var(--text);background:var(--dark);min-height
 <script>
 
 // ── STATE ───────────────────────────────────────────────────────────
-var STATE = { profile:{}, ans:{}, phase:'MINI', step:0 };
+var CYB_STATE_VERSION = 2;
+var STATE = { profile:{}, ans:{}, phase:'MINI', step:0, _v:CYB_STATE_VERSION };
 
 // ── ACTIVE STEPS ────────────────────────────────────────────────────
 function getActiveSteps(){
@@ -385,6 +386,8 @@ function restoreState(){
     if(!raw) return;
     var s=JSON.parse(raw);
     if(!s||typeof s!=='object') return;
+    // H3: reject incompatible schema versions (allows safe future migrations)
+    if(s._v && s._v > CYB_STATE_VERSION) return;
     if(s.phase!=='MINI'&&s.phase!=='COMPLET') return;
     if(typeof s.step!=='number'||s.step<0) return;
     if(!s.profile||typeof s.profile!=='object') return;
@@ -392,9 +395,10 @@ function restoreState(){
     STATE.profile=s.profile;
     STATE.ans=s.ans;
     STATE.phase=s.phase;
-    // C1: restore dedup flags to prevent double email on refresh
+    // C1: restore dedup flags to prevent double email/tracking on refresh
     if(s._miniEmailSent) STATE._miniEmailSent=true;
     if(s._completEmailSent) STATE._completEmailSent=true;
+    if(s._miniResultsTracked) STATE._miniResultsTracked=true;
     if(s._completResultsTracked) STATE._completResultsTracked=true;
     var steps=getActiveSteps();
     STATE.step=Math.min(s.step,steps.length-1);
@@ -416,6 +420,11 @@ function hasSavedState(){
 function resetState(){
   try{localStorage.removeItem('CYB_STATE');}catch(e){}
   STATE.profile={};STATE.ans={};STATE.phase='MINI';STATE.step=0;
+  // H3: clear all dedup/tracking flags to allow fresh funnel
+  delete STATE._miniEmailSent;
+  delete STATE._completEmailSent;
+  delete STATE._miniResultsTracked;
+  delete STATE._completResultsTracked;
   render();
   document.querySelector('.main').scrollTop=0;
 }
