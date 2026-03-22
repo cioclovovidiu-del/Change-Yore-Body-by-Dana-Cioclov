@@ -148,6 +148,59 @@ function escapeHtml(str: string): string {
   return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
+// ── C9: User-facing follow-up email after COMPLET completion ────────
+// Sent immediately at questionnaire completion (only real trigger available).
+// Not a delayed recovery — no scheduler exists. Framed as "next steps" guidance.
+// Buyers will additionally receive C3 transactional emails from webhook — no conflict.
+function buildCompletFollowUpHtml(profile: Record<string, unknown>): string {
+  const name = escapeHtml(String(profile.name || ""));
+  const greeting = name ? `Dragă ${name},` : "Bună,";
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://changeyourbody.ro";
+
+  return `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#0f1923;font-family:Arial,Helvetica,sans-serif;">
+  <div style="max-width:560px;margin:0 auto;padding:32px 20px;">
+    <div style="text-align:center;margin-bottom:24px;">
+      <h1 style="color:#C9A84C;font-size:24px;margin:0 0 4px;">Change Your Body</h1>
+      <p style="color:#666;font-size:13px;margin:0;">Profilul tău a fost analizat</p>
+    </div>
+
+    <div style="background:#141e29;border-radius:16px;padding:28px 24px;border:1px solid rgba(201,168,76,0.15);">
+      <p style="color:#e0e0e0;font-size:15px;line-height:1.8;margin:0 0 16px;">${greeting}</p>
+      <p style="color:#e0e0e0;font-size:15px;line-height:1.8;margin:0 0 20px;">
+        Ai completat chestionarul Change Your Body — felicitări pentru acest prim pas!
+        Răspunsurile tale au fost analizate și profilul tău este gata.
+      </p>
+
+      <div style="background:rgba(42,165,160,0.06);border-radius:10px;padding:16px;border:1px solid rgba(42,165,160,0.12);margin-bottom:20px;">
+        <p style="color:#2AA5A0;font-size:13px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;margin:0 0 10px;">Ce urmează?</p>
+        <table style="width:100%;border-collapse:collapse;">
+          <tr><td style="padding:6px 12px 6px 0;vertical-align:top;color:#C9A84C;font-weight:700;font-size:15px;">1.</td><td style="padding:6px 0;color:#ccc;font-size:14px;line-height:1.6;">Alege pachetul potrivit pentru tine</td></tr>
+          <tr><td style="padding:6px 12px 6px 0;vertical-align:top;color:#C9A84C;font-weight:700;font-size:15px;">2.</td><td style="padding:6px 0;color:#ccc;font-size:14px;line-height:1.6;">Daniela pregătește planul tău personalizat (24h)</td></tr>
+          <tr><td style="padding:6px 12px 6px 0;vertical-align:top;color:#C9A84C;font-weight:700;font-size:15px;">3.</td><td style="padding:6px 0;color:#ccc;font-size:14px;line-height:1.6;">Începi transformarea cu nutriție + antrenament adaptat</td></tr>
+        </table>
+      </div>
+
+      <div style="text-align:center;margin-bottom:20px;">
+        <a href="${escapeHtml(siteUrl)}/#mini-flow" style="display:inline-block;padding:14px 32px;background:linear-gradient(135deg,#2AA5A0,#1d8a86);color:#fff;border-radius:10px;text-decoration:none;font-size:15px;font-weight:600;">Vezi pachetele disponibile</a>
+      </div>
+
+      <div style="text-align:center;padding-top:16px;border-top:1px solid rgba(255,255,255,0.06);">
+        <p style="color:#999;font-size:13px;margin:0 0 12px;">Ai întrebări sau vrei ajutor să alegi? Scrie-i Danielei:</p>
+        <a href="https://wa.me/40721333040?text=${encodeURIComponent("Bună Daniela, am completat chestionarul Change Your Body și am câteva întrebări.")}" style="display:inline-block;padding:10px 24px;background:rgba(37,211,102,0.12);color:#25D366;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600;border:1px solid rgba(37,211,102,0.2);">Scrie pe WhatsApp</a>
+      </div>
+    </div>
+
+    <p style="text-align:center;color:#444;font-size:11px;margin-top:20px;">
+      Change Your Body by Daniela Cioclov · changeyourbody.ro
+    </p>
+  </div>
+</body>
+</html>`;
+}
+
 export async function POST(request: Request) {
   try {
     const body: RequestBody = await request.json();
@@ -196,6 +249,7 @@ export async function POST(request: Request) {
       html = buildEmailHtml(q.answers, q.questions);
     }
 
+    // Send internal notification to Daniela (existing behavior, all types)
     const { error } = await resend.emails.send({
       from: "CYB Chestionar <onboarding@resend.dev>",
       to: "cioclov.ovidiu@gmail.com",
@@ -208,7 +262,36 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Failed to send email" }, { status: 500 });
     }
 
-    return NextResponse.json({ ok: true });
+    // C9: User-facing follow-up email (COMPLET completion only)
+    // Fires immediately — no delayed scheduler exists in this stack.
+    // Safe: only sends if email present + GDPR consent already verified above.
+    // Buyers will also get C3 transactional emails later — no conflict.
+    let userEmailSent = false;
+    if ("type" in body && body.type === "complet") {
+      const complet = body as CompletBody;
+      const userEmail = String(complet.profile.email || "").trim();
+      if (userEmail && userEmail.includes("@")) {
+        try {
+          const { error: userErr } = await resend.emails.send({
+            from: "Change Your Body <onboarding@resend.dev>",
+            to: userEmail,
+            subject: "Profilul tău Change Your Body este gata",
+            html: buildCompletFollowUpHtml(complet.profile),
+          });
+          if (userErr) {
+            console.error("[C9] User follow-up email failed:", userErr);
+          } else {
+            userEmailSent = true;
+            console.log(`[C9] Follow-up email sent to ${userEmail}`);
+          }
+        } catch (err) {
+          console.error("[C9] User follow-up email exception:", err);
+          // Non-fatal: Daniela notification already sent
+        }
+      }
+    }
+
+    return NextResponse.json({ ok: true, userFollowUp: userEmailSent });
   } catch (err) {
     console.error("Send email error:", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
