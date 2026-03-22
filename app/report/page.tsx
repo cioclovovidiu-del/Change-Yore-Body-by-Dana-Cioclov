@@ -1,6 +1,7 @@
 import Stripe from "stripe";
 import {
   extractProfile,
+  extractCompletAnswers,
   buildMetabolicReportHtml,
 } from "@/lib/metabolic-report";
 
@@ -142,6 +143,9 @@ export default async function ReportPage({
     session.customer_details?.name ||
     "";
   const packageName = PACKAGE_NAMES[packageId] || "REBUILD Esențial";
+
+  // D11: Extract COMPLET questionnaire answers (available for future enhanced reports)
+  const completAnswers = extractCompletAnswers(session.metadata);
 
   const reportHtml = buildMetabolicReportHtml({
     customerName,

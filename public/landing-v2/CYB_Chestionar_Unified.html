@@ -504,6 +504,10 @@ function cybCheckout(packageId){
     if(typeof STATE.profile.goal!=='undefined') payload.profileGoal=Number(STATE.profile.goal);
     if(typeof STATE.profile.moment!=='undefined') payload.profileMoment=Number(STATE.profile.moment);
   }
+  // D11: pass COMPLET answers for server-side generation
+  if(STATE&&STATE.ans&&Object.keys(STATE.ans).length>0){
+    payload.completAnswers=STATE.ans;
+  }
   fetch('/api/create-checkout',{
     method:'POST',
     headers:{'Content-Type':'application/json'},

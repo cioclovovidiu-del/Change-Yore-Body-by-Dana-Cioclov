@@ -32,6 +32,31 @@ export function extractProfile(
   return { age, height, weight, activity, goal, moment };
 }
 
+// ── D11: COMPLET answers extraction from Stripe metadata ─────────────
+// Reassembles chunked JSON from cyb_ans_0, cyb_ans_1, ... keys
+export function extractCompletAnswers(
+  metadata: Record<string, string> | null | undefined
+): Record<string, unknown> | null {
+  if (!metadata) return null;
+  const chunksStr = metadata["cyb_ans_chunks"];
+  if (!chunksStr) return null;
+  const chunks = Number(chunksStr);
+  if (!chunks || chunks < 1 || chunks > 20) return null;
+  try {
+    let json = "";
+    for (let i = 0; i < chunks; i++) {
+      const part = metadata[`cyb_ans_${i}`];
+      if (typeof part !== "string") return null;
+      json += part;
+    }
+    const parsed = JSON.parse(json);
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return null;
+    return parsed as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
 // ── Pure math (CYB_Calc.js replicated) ──────────────────────────────
 export function calcBMI(w: number, h: number): number {
   return w / ((h / 100) ** 2);

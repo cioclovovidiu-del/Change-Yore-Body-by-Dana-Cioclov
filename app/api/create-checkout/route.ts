@@ -44,6 +44,8 @@ interface CheckoutBody {
   profileActivity?: number;
   profileGoal?: number;
   profileMoment?: number;
+  // D11: COMPLET questionnaire answers for post-payment generation
+  completAnswers?: Record<string, unknown>;
 }
 
 export async function POST(request: Request) {
@@ -61,6 +63,7 @@ export async function POST(request: Request) {
       packageId, customerName, customerEmail,
       profileAge, profileHeight, profileWeight,
       profileActivity, profileGoal, profileMoment,
+      completAnswers,
     } = body;
 
     // Validate package
@@ -86,6 +89,35 @@ export async function POST(request: Request) {
       request.headers.get("origin") ||
       "https://changeyourbody.ro";
 
+    // D11: Serialize COMPLET answers into chunked metadata keys
+    // Stripe limit: 500 chars per value, 50 keys max. We use ~10 keys for profile,
+    // leaving ~40 for answer chunks. Textareas are truncated to keep total safe.
+    const ansMetadata: Record<string, string> = {};
+    if (completAnswers && typeof completAnswers === "object") {
+      try {
+        // Truncate any string values (textareas) to 200 chars to keep size manageable
+        const sanitized: Record<string, unknown> = {};
+        for (const [k, v] of Object.entries(completAnswers)) {
+          if (typeof v === "string") {
+            sanitized[k] = v.slice(0, 200);
+          } else {
+            sanitized[k] = v;
+          }
+        }
+        const json = JSON.stringify(sanitized);
+        // Split into 500-char chunks: cyb_ans_0, cyb_ans_1, ...
+        const CHUNK = 500;
+        const chunks = Math.ceil(json.length / CHUNK);
+        // Safety: max 20 chunks (10000 chars) to stay within Stripe key limits
+        for (let i = 0; i < Math.min(chunks, 20); i++) {
+          ansMetadata[`cyb_ans_${i}`] = json.slice(i * CHUNK, (i + 1) * CHUNK);
+        }
+        ansMetadata["cyb_ans_chunks"] = String(Math.min(chunks, 20));
+      } catch {
+        // Silent fail — profile data still goes through
+      }
+    }
+
     // Create Stripe Checkout Session
     const sessionParams: Stripe.Checkout.SessionCreateParams = {
       mode: "payment",
@@ -108,6 +140,8 @@ export async function POST(request: Request) {
         ...(profileActivity != null ? { cyb_activity: String(profileActivity) } : {}),
         ...(profileGoal != null ? { cyb_goal: String(profileGoal) } : {}),
         ...(profileMoment != null ? { cyb_moment: String(profileMoment) } : {}),
+        // D11: COMPLET answers (chunked JSON)
+        ...ansMetadata,
       },
     };
 

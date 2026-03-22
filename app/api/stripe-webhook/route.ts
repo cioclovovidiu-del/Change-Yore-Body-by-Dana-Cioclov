@@ -3,6 +3,7 @@ import Stripe from "stripe";
 import { Resend } from "resend";
 import {
   extractProfile,
+  extractCompletAnswers,
   buildMetabolicReportHtml,
   escapeHtml,
   type CustomerProfile,
@@ -682,8 +683,11 @@ export async function POST(request: Request) {
       // C6: Extract profile from Stripe session metadata for report generation
       const customerProfile = extractProfile(session.metadata);
 
+      // D11: Extract COMPLET questionnaire answers from chunked metadata
+      const completAnswers = extractCompletAnswers(session.metadata);
+
       console.log(
-        `[stripe-webhook] Payment confirmed: ${packageName} [${deliveryIntent.type}] — ${payload.customerEmail || "no-email"} — profile: ${customerProfile ? "available" : "missing"}`
+        `[stripe-webhook] Payment confirmed: ${packageName} [${deliveryIntent.type}] — ${payload.customerEmail || "no-email"} — profile: ${customerProfile ? "available" : "missing"} — completAnswers: ${completAnswers ? Object.keys(completAnswers).length + " keys" : "none"}`
       );
 
       // C3/C5/C6: fulfillment (emails + report + delivery result)
