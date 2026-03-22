@@ -1,11 +1,78 @@
 import type { Metadata } from "next";
+import Stripe from "stripe";
+
+// ── C8: Package-aware success page with delivery guidance ──────────
+// Reads session_id from Stripe redirect to show package-specific messaging.
+// Essential: links to C7 browser report. Premium/Coaching: honest manual timeline.
+// Graceful fallback: if Stripe unavailable, shows generic success (C1 behavior).
 
 export const metadata: Metadata = {
   title: "Mulțumim! — Change Your Body",
   description: "Plata a fost procesată cu succes.",
 };
 
-export default function CheckoutSuccessPage() {
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
+// ── Package display info ───────────────────────────────────────────
+const PACKAGE_DISPLAY: Record<
+  string,
+  { label: string; emoji: string }
+> = {
+  essential: { label: "REBUILD Esențial", emoji: "📊" },
+  premium: { label: "REBUILD Premium", emoji: "⭐" },
+  coaching: { label: "CYB Coaching Complet", emoji: "🏋️" },
+};
+
+// ── Stripe session fetch (safe: returns null on any failure) ───────
+async function getSessionInfo(sessionId: string): Promise<{
+  packageId: string;
+  customerName: string;
+  fulfilled: boolean;
+} | null> {
+  if (!process.env.STRIPE_SECRET_KEY) return null;
+  try {
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+      apiVersion: "2026-02-25.clover",
+    });
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    return {
+      packageId: session.metadata?.packageId || "",
+      customerName:
+        session.metadata?.customerName ||
+        session.customer_details?.name ||
+        "",
+      fulfilled: session.metadata?.cyb_fulfilled === "true",
+    };
+  } catch {
+    return null;
+  }
+}
+
+export default async function CheckoutSuccessPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ session_id?: string }>;
+}) {
+  const { session_id } = await searchParams;
+  const info = session_id ? await getSessionInfo(session_id) : null;
+
+  // Resolve package-aware data (fallback to generic if unavailable)
+  const packageId = info?.packageId || "";
+  const pkgDisplay = PACKAGE_DISPLAY[packageId] || null;
+  const firstName = info?.customerName?.split(" ")[0] || "";
+  const isEssential = packageId === "essential";
+  const isFulfilled = info?.fulfilled === true;
+
+  // Build "Ce urmează" steps based on package
+  const steps = buildSteps(packageId, isFulfilled);
+
+  // WhatsApp message — package-aware if known
+  const waMessage = pkgDisplay
+    ? `Bună Daniela, tocmai am achiziționat ${pkgDisplay.label} și am o întrebare.`
+    : "Bună Daniela, tocmai am finalizat plata și am o întrebare.";
+  const waUrl = `https://wa.me/40721333040?text=${encodeURIComponent(waMessage)}`;
+
   return (
     <div
       style={{
@@ -30,14 +97,10 @@ export default function CheckoutSuccessPage() {
           border: "1px solid rgba(201,168,76,0.15)",
         }}
       >
-        <div
-          style={{
-            fontSize: "3rem",
-            marginBottom: 16,
-          }}
-        >
-          ✓
-        </div>
+        {/* ── Checkmark ─────────────────────────────────────── */}
+        <div style={{ fontSize: "3rem", marginBottom: 16 }}>✓</div>
+
+        {/* ── Heading — personalized if name available ──────── */}
         <h1
           style={{
             fontFamily: "var(--font-cormorant), Georgia, serif",
@@ -47,8 +110,12 @@ export default function CheckoutSuccessPage() {
             marginBottom: 12,
           }}
         >
-          Mulțumim pentru încredere!
+          {firstName
+            ? `Mulțumim, ${firstName}!`
+            : "Mulțumim pentru încredere!"}
         </h1>
+
+        {/* ── Confirmation text — package-aware ─────────────── */}
         <p
           style={{
             fontSize: "0.92rem",
@@ -57,10 +124,98 @@ export default function CheckoutSuccessPage() {
             marginBottom: 24,
           }}
         >
-          Plata ta a fost procesată cu succes. Daniela va pregăti planul tău
-          personalizat și te va contacta în maximum 24 de ore.
+          Plata ta a fost procesată cu succes.
+          {pkgDisplay && (
+            <>
+              {" "}
+              Pachetul{" "}
+              <strong style={{ color: "#C9A84C" }}>
+                {pkgDisplay.label}
+              </strong>{" "}
+              este acum activ.
+            </>
+          )}
         </p>
 
+        {/* ── C8: Essential report CTA (C7 reuse) ──────────── */}
+        {isEssential && session_id && (
+          <div
+            style={{
+              background: "rgba(42,165,160,0.08)",
+              borderRadius: 14,
+              padding: "20px 20px",
+              marginBottom: 20,
+              border: "1px solid rgba(42,165,160,0.18)",
+            }}
+          >
+            <p
+              style={{
+                fontSize: "0.88rem",
+                color: "#2AA5A0",
+                fontWeight: 600,
+                margin: "0 0 8px",
+              }}
+            >
+              📊 Raportul tău metabolic personalizat
+            </p>
+            {isFulfilled ? (
+              <>
+                <p
+                  style={{
+                    fontSize: "0.8rem",
+                    color: "rgba(255,255,255,0.5)",
+                    lineHeight: 1.6,
+                    margin: "0 0 14px",
+                  }}
+                >
+                  Raportul este gata! Include analiza BMI, BMR, TDEE și
+                  recomandări personalizate.
+                </p>
+                <a
+                  href={`/report?sid=${encodeURIComponent(session_id)}`}
+                  style={{
+                    display: "inline-block",
+                    padding: "10px 24px",
+                    borderRadius: 10,
+                    background:
+                      "linear-gradient(135deg, #2AA5A0, #1d8a86)",
+                    color: "#fff",
+                    fontSize: "0.85rem",
+                    fontWeight: 600,
+                    textDecoration: "none",
+                  }}
+                >
+                  Deschide raportul →
+                </a>
+              </>
+            ) : (
+              <p
+                style={{
+                  fontSize: "0.8rem",
+                  color: "rgba(255,255,255,0.45)",
+                  lineHeight: 1.6,
+                  margin: 0,
+                }}
+              >
+                Raportul se generează automat și va fi disponibil în
+                câteva minute. Vei primi un link și pe email.
+                <br />
+                <a
+                  href={`/report?sid=${encodeURIComponent(session_id)}`}
+                  style={{
+                    color: "#2AA5A0",
+                    textDecoration: "underline",
+                    fontSize: "0.8rem",
+                  }}
+                >
+                  Verifică disponibilitatea →
+                </a>
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* ── Ce urmează steps ─────────────────────────────── */}
         <div
           style={{
             background: "rgba(255,255,255,0.03)",
@@ -83,24 +238,7 @@ export default function CheckoutSuccessPage() {
             Ce urmează
           </h3>
           <div style={{ textAlign: "left" }}>
-            {[
-              {
-                step: "1",
-                text: "Primești un email de confirmare cu detaliile comenzii",
-              },
-              {
-                step: "2",
-                text: "Daniela analizează profilul tău complet (24h)",
-              },
-              {
-                step: "3",
-                text: "Primești planul personalizat: nutriție + antrenament + raport",
-              },
-              {
-                step: "4",
-                text: "Începi transformarea cu suport dedicat",
-              },
-            ].map((item) => (
+            {steps.map((item) => (
               <div
                 key={item.step}
                 style={{
@@ -143,6 +281,7 @@ export default function CheckoutSuccessPage() {
           </div>
         </div>
 
+        {/* ── WhatsApp CTA ─────────────────────────────────── */}
         <p
           style={{
             fontSize: "0.78rem",
@@ -153,7 +292,7 @@ export default function CheckoutSuccessPage() {
           Ai întrebări? Scrie-i Danielei direct:
         </p>
         <a
-          href="https://wa.me/40721333040?text=Bun%C4%83%20Daniela,%20tocmai%20am%20finalizat%20plata%20și%20am%20o%20întrebare."
+          href={waUrl}
           target="_blank"
           rel="noopener noreferrer"
           style={{
@@ -172,6 +311,7 @@ export default function CheckoutSuccessPage() {
           Scrie pe WhatsApp →
         </a>
 
+        {/* ── Back link ────────────────────────────────────── */}
         <div style={{ marginTop: 24 }}>
           <a
             href="/"
@@ -187,4 +327,95 @@ export default function CheckoutSuccessPage() {
       </div>
     </div>
   );
+}
+
+// ── Package-aware step builder ─────────────────────────────────────
+function buildSteps(
+  packageId: string,
+  isFulfilled: boolean
+): { step: string; text: string }[] {
+  if (packageId === "essential") {
+    return [
+      {
+        step: "1",
+        text: "Primești un email de confirmare cu detaliile comenzii",
+      },
+      {
+        step: "2",
+        text: isFulfilled
+          ? "Raportul tău metabolic personalizat este gata (vezi mai sus)"
+          : "Raportul tău metabolic se generează automat (câteva minute)",
+      },
+      {
+        step: "3",
+        text: "Daniela analizează profilul tău și pregătește planul complet (24h)",
+      },
+      {
+        step: "4",
+        text: "Primești planul personalizat: nutriție + antrenament",
+      },
+    ];
+  }
+
+  if (packageId === "premium") {
+    return [
+      {
+        step: "1",
+        text: "Primești un email de confirmare cu detaliile comenzii",
+      },
+      {
+        step: "2",
+        text: "Daniela analizează profilul tău complet (24h)",
+      },
+      {
+        step: "3",
+        text: "Primești planul premium personalizat: nutriție + antrenament + raport detaliat",
+      },
+      {
+        step: "4",
+        text: "Începi transformarea cu suport dedicat",
+      },
+    ];
+  }
+
+  if (packageId === "coaching") {
+    return [
+      {
+        step: "1",
+        text: "Primești un email de confirmare cu detaliile comenzii",
+      },
+      {
+        step: "2",
+        text: "Daniela te contactează personal pentru programarea primei sesiuni",
+      },
+      {
+        step: "3",
+        text: "Primești planul complet + acces la coaching 1-la-1",
+      },
+      {
+        step: "4",
+        text: "Începi transformarea cu Daniela alături de tine la fiecare pas",
+      },
+    ];
+  }
+
+  // Generic fallback (no package info available)
+  return [
+    {
+      step: "1",
+      text: "Primești un email de confirmare cu detaliile comenzii",
+    },
+    {
+      step: "2",
+      text: "Daniela analizează profilul tău complet (24h)",
+    },
+    {
+      step: "3",
+      text: "Primești planul personalizat: nutriție + antrenament + raport",
+    },
+    {
+      step: "4",
+      text: "Începi transformarea cu suport dedicat",
+    },
+  ];
 }
