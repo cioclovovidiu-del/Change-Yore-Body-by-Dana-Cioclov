@@ -281,15 +281,20 @@ function goNext(){
     STATE.step++;
     if(STATE.phase==='MINI'){var ns=steps[STATE.step];try{gtag('event','mini_step',{event_category:'funnel',step_id:ns.id,step_index:STATE.step});fbq('trackCustom','MiniStep',{step_id:ns.id,step_index:STATE.step});}catch(e){}}
     render();
-    document.querySelector('.main').scrollTop=0;
+    _scrollTop();
   }
 }
 function goBack(){
   if(STATE.step > 0){
     STATE.step--;
     render();
-    document.querySelector('.main').scrollTop=0;
+    _scrollTop();
   }
+}
+// D5: smooth scroll to top on step change (works in both iframe and standalone)
+function _scrollTop(){
+  try{document.querySelector('.main').scrollTop=0;}catch(e){}
+  try{window.scrollTo({top:0,behavior:'smooth'});}catch(e){}
 }
 function startComplet(){
   try{gtag('event','complet_start',{event_category:'funnel',route:COPY.route.get(STATE.profile.moment)});}catch(e){}
@@ -300,7 +305,7 @@ function startComplet(){
   STATE.phase='COMPLET';
   STATE.step=0;
   render();
-  document.querySelector('.main').scrollTop=0;
+  _scrollTop();
 }
 
 // ── HELPERS ─────────────────────────────────────────────────────────
@@ -346,9 +351,9 @@ function render(){
   // Step info
   var info='';
   if(STATE.phase==='MINI' && s.type!=='welcome' && s.type!=='mini_results'){
-    info=(STATE.step)+' / '+(steps.length-2);
+    info='Pas '+(STATE.step)+' din '+(steps.length-2);
   } else if(STATE.phase==='COMPLET' && s.id && s.id.startsWith('q')){
-    info=curQ(steps,STATE.step)+'/'+totalQ(steps);
+    info='Pas '+curQ(steps,STATE.step)+' din '+totalQ(steps);
   } else if(s.type==='transition'){
     info=s.block||'';
   }
@@ -441,13 +446,13 @@ function resetState(){
   delete STATE._miniResultsTracked;
   delete STATE._completResultsTracked;
   render();
-  document.querySelector('.main').scrollTop=0;
+  _scrollTop();
 }
 
 // ── INIT ────────────────────────────────────────────────────────────
 restoreState();
 render();
-document.querySelector('.main').scrollTop=0;
+_scrollTop();
 
 // ── MOBILE: scroll focused input into view when keyboard opens ──────
 document.addEventListener('focusin', function(e){

@@ -84,7 +84,7 @@ function renderActivity(s, P, btn) {
     '<div class="q-label">' + s.label + '</div>' +
     '<div class="q-title">' + s.title + '</div>' +
     '<div class="q-sub">' + s.sub + '</div>' +
-    '<div class="activity-opts">' + acts.map(function(a, i) { return '<div class="activity-opt ' + (P.activity === i ? 'selected' : '') + '" role="button" tabindex="0" onclick="STATE.profile.activity=' + i + ';render()">' + a + '</div>' }).join('') + '</div>' +
+    '<div class="activity-opts">' + acts.map(function(a, i) { return '<div class="activity-opt ' + (P.activity === i ? 'selected' : '') + '" role="button" tabindex="0" onclick="STATE.profile.activity=' + i + ';render();setTimeout(goNext,400)">' + a + '</div>' }).join('') + '</div>' +
     '<div class="emo-msg ' + (P.activity !== undefined ? 'show' : '') + '" id="emo">' + (P.activity !== undefined && emoMessages.activity ? emoMessages.activity(P) : '') + '</div>' +
   '</div>';
 }
