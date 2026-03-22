@@ -553,11 +553,38 @@ function renderCompletResults(s, P, A, btn, resetHtml) {
     '<div id="completReadHint" style="text-align:center;font-size:0.78rem;color:var(--teal-glow);font-style:italic;margin-bottom:10px;transition:opacity 0.4s">Citește mesajul înainte să continui...</div>' +
     '<div id="completCtaZone" style="opacity:0.5;pointer-events:none;transition:opacity 0.5s;text-align:center;padding:28px 20px;margin-top:20px;border-radius:16px;background:linear-gradient(135deg,rgba(42,165,160,0.08),rgba(201,168,76,0.06));border:1px solid rgba(201,168,76,0.15)">' +
       '<h3 style="font-family:var(--serif);font-size:1.3rem;color:white;margin-bottom:8px">' + CR.ctaHeading + '</h3>' +
-      '<p style="font-size:0.85rem;color:var(--text);line-height:1.7;margin-bottom:12px">' + CR.ctaBody + '</p>' +
-      '<p style="font-size:0.72rem;color:var(--teal-glow);font-style:italic;opacity:0.7;line-height:1.5;margin-bottom:18px">Cu cât începi mai repede, cu atât corectăm mai repede ce te blochează acum.</p>' +
-      '<a href="' + CR.ctaDirectWhatsApp + '" target="_blank" rel="noopener" class="btn btn-gold" style="display:inline-block;text-decoration:none;padding:14px 32px;font-size:0.95rem" onclick="try{gtag(\'event\',\'whatsapp_click\',{source:\'complet_results_direct\'});fbq(\'track\',\'Contact\');}catch(e){}">' + CR.ctaDirectButton + '</a>' +
-      '<p style="margin-top:14px;font-size:0.78rem;color:var(--text)">Sau intră în comunitatea CYB:</p>' +
-      '<a href="' + CR.ctaGroupWhatsApp + '" target="_blank" rel="noopener" style="display:inline-block;margin-top:6px;font-size:0.78rem;color:rgba(37,211,102,0.7);text-decoration:underline;transition:color 0.2s" onclick="try{gtag(\'event\',\'whatsapp_click\',{source:\'complet_results_group\'});fbq(\'track\',\'Contact\');}catch(e){}">' + CR.ctaGroupButton + '</a>' +
+      '<p style="font-size:0.85rem;color:var(--text);line-height:1.7;margin-bottom:18px">' + CR.ctaBody + '</p>' +
+      // C1: Package cards with Stripe checkout buttons
+      (function() {
+        var pkgs = CR.packages || [];
+        if (pkgs.length === 0) return '';
+        var cards = '';
+        for (var pi = 0; pi < pkgs.length; pi++) {
+          var pk = pkgs[pi];
+          var isFeatured = !!pk.badge;
+          var borderColor = isFeatured ? 'rgba(201,168,76,0.4)' : 'rgba(255,255,255,0.08)';
+          var bgColor = isFeatured ? 'rgba(201,168,76,0.06)' : 'rgba(255,255,255,0.02)';
+          cards += '<div style="text-align:left;padding:16px;border-radius:12px;border:1px solid ' + borderColor + ';background:' + bgColor + ';margin-bottom:12px">';
+          if (pk.badge) {
+            cards += '<div style="font-size:0.65rem;color:var(--gold);text-transform:uppercase;letter-spacing:0.1em;font-weight:700;margin-bottom:6px">' + _escLetterHtml(pk.badge) + '</div>';
+          }
+          cards += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">';
+          cards += '<span style="font-family:var(--serif);font-size:1.05rem;color:white;font-weight:600">' + _escLetterHtml(pk.name) + '</span>';
+          cards += '<span style="font-family:var(--serif);font-size:1.1rem;color:var(--gold);font-weight:700">' + _escLetterHtml(pk.price) + (pk.old ? ' <span style="font-size:0.72rem;color:var(--text);text-decoration:line-through">' + _escLetterHtml(pk.old) + '</span>' : '') + '</span>';
+          cards += '</div>';
+          cards += '<p style="font-size:0.75rem;color:var(--text);line-height:1.6;margin:0 0 12px">' + _escLetterHtml(pk.desc) + '</p>';
+          cards += '<button class="btn btn-gold" style="width:100%;padding:12px;font-size:0.88rem;cursor:pointer" onclick="cybCheckout(\'' + pk.id + '\')" data-pkg="' + pk.id + '">' + (CR.ctaBuyLabel || 'Cumpără acum') + '</button>';
+          cards += '</div>';
+        }
+        return cards;
+      })() +
+      '<p style="font-size:0.72rem;color:var(--teal-glow);font-style:italic;opacity:0.7;line-height:1.5;margin:16px 0 12px">Cu cât începi mai repede, cu atât corectăm mai repede ce te blochează acum.</p>' +
+      // WhatsApp fallback (preserved)
+      '<div style="height:1px;background:rgba(255,255,255,0.06);margin:16px 0"></div>' +
+      '<p style="font-size:0.78rem;color:var(--text);margin-bottom:8px">' + (CR.ctaWhatsAppAlt || 'Preferi să vorbești cu noi mai întâi?') + '</p>' +
+      '<a href="' + CR.ctaDirectWhatsApp + '" target="_blank" rel="noopener" style="display:inline-block;padding:10px 24px;font-size:0.82rem;color:rgba(37,211,102,0.9);text-decoration:none;border:1px solid rgba(37,211,102,0.2);border-radius:8px;transition:background 0.2s" onclick="try{gtag(\'event\',\'whatsapp_click\',{source:\'complet_results_direct\'});fbq(\'track\',\'Contact\');}catch(e){}">' + CR.ctaDirectButton + '</a>' +
+      '<p style="margin-top:10px;font-size:0.72rem;color:var(--text)">Sau intră în comunitatea CYB:</p>' +
+      '<a href="' + CR.ctaGroupWhatsApp + '" target="_blank" rel="noopener" style="display:inline-block;margin-top:4px;font-size:0.72rem;color:rgba(37,211,102,0.6);text-decoration:underline;transition:color 0.2s" onclick="try{gtag(\'event\',\'whatsapp_click\',{source:\'complet_results_group\'});fbq(\'track\',\'Contact\');}catch(e){}">' + CR.ctaGroupButton + '</a>' +
     '</div>' +
     resetHtml +
   '</div>';

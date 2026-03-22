@@ -238,8 +238,16 @@ const COPY = {
         finalBody: function(profileName, profileColor) { return 'Toate aceste date alimentează motorul AI CYB care va genera:<br><strong style="color:white">raport personalizat + plan alimentar + program antrenament</strong><br>— totul adaptat pe profilul tău <strong style="color:' + profileColor + '">' + profileName + '</strong>.'; },
         finalQuote: '„Te aștept pe cealaltă parte." — Daniela',
         ctaHeading: 'Profilul tău e complet. Hai să-l transformăm în plan.',
-        ctaBody: 'Scrie-i direct Danielei pe WhatsApp și în 24h primești planul tău personalizat.',
-        ctaDirectButton: 'Programează-ți planul cu Daniela →',
+        ctaBody: 'Alege planul potrivit și primești totul personalizat — nutriție, antrenament, raport complet.',
+        // C1: Stripe packages (3 tiers)
+        packages: [
+          { id:'essential', name:'REBUILD Esențial', price:'199€', desc:'Plan alimentar 7 zile + antrenament 4 săptămâni + raport personalizat', badge:null },
+          { id:'premium', name:'REBUILD Premium', price:'299€', old:'399€', desc:'Plan alimentar 30 zile + antrenament 12 săptămâni + raport complet + suport WhatsApp 30 zile', badge:'Cel mai popular' },
+          { id:'coaching', name:'CYB Coaching Complet', price:'499€', desc:'Tot ce include Premium + coaching 1:1 cu Daniela + ajustări săptămânale + acces comunitate VIP', badge:null },
+        ],
+        ctaBuyLabel: 'Cumpără acum',
+        ctaWhatsAppAlt: 'Preferi să vorbești cu noi mai întâi?',
+        ctaDirectButton: 'Scrie-i Danielei pe WhatsApp →',
         ctaDirectWhatsApp: 'https://wa.me/40721333040?text=Bun%C4%83%20Daniela,%20am%20completat%20chestionarul%20complet%20%C8%99i%20vreau%20s%C4%83%20discut%C4%83m%20despre%20planul%20meu.',
         ctaGroupButton: 'Intră în grupul CYB (opțional)',
         ctaGroupWhatsApp: 'https://chat.whatsapp.com/Gyi1jBE4lI5JQZKTJ9jxsC',

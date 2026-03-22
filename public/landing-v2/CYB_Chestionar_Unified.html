@@ -468,6 +468,53 @@ document.addEventListener('keydown', function(e){
     }
   }
 });
+
+// ── C1: Stripe Checkout handler ─────────────────────────────────────
+function cybCheckout(packageId){
+  if(!packageId) return;
+  // Disable all buy buttons during request
+  var btns=document.querySelectorAll('[data-pkg]');
+  var clickedBtn=document.querySelector('[data-pkg="'+packageId+'"]');
+  for(var i=0;i<btns.length;i++){btns[i].disabled=true;btns[i].style.opacity='0.6';}
+  if(clickedBtn) clickedBtn.textContent='Se procesează...';
+  // Track checkout initiation
+  try{gtag('event','begin_checkout',{event_category:'purchase',package:packageId});fbq('track','InitiateCheckout',{content_name:packageId});}catch(e){}
+  // Call checkout API — C6: pass profile data for server-side report generation
+  var payload={packageId:packageId};
+  if(STATE&&STATE.profile){
+    if(STATE.profile.name) payload.customerName=STATE.profile.name;
+    if(STATE.profile.email) payload.customerEmail=STATE.profile.email;
+    // C6: essential profile fields for automated metabolic report
+    if(STATE.profile.age) payload.profileAge=Number(STATE.profile.age);
+    if(STATE.profile.height) payload.profileHeight=Number(STATE.profile.height);
+    if(STATE.profile.weight) payload.profileWeight=Number(STATE.profile.weight);
+    if(typeof STATE.profile.activity!=='undefined') payload.profileActivity=Number(STATE.profile.activity);
+    if(typeof STATE.profile.goal!=='undefined') payload.profileGoal=Number(STATE.profile.goal);
+    if(typeof STATE.profile.moment!=='undefined') payload.profileMoment=Number(STATE.profile.moment);
+  }
+  fetch('/api/create-checkout',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(payload)
+  })
+  .then(function(r){return r.json();})
+  .then(function(data){
+    if(data&&data.url){
+      // Redirect top-level window (exit iframe)
+      try{window.top.location.href=data.url;}catch(e){window.location.href=data.url;}
+    } else {
+      // Checkout not available — show WhatsApp fallback message
+      alert('Plata online nu este disponibilă momentan. Te rugăm să ne contactezi pe WhatsApp.');
+      for(var j=0;j<btns.length;j++){btns[j].disabled=false;btns[j].style.opacity='1';}
+      if(clickedBtn) clickedBtn.textContent=COPY.complet.ui.results.ctaBuyLabel||'Cumpără acum';
+    }
+  })
+  .catch(function(){
+    alert('Eroare de conexiune. Te rugăm să încerci din nou sau să ne contactezi pe WhatsApp.');
+    for(var j=0;j<btns.length;j++){btns[j].disabled=false;btns[j].style.opacity='1';}
+    if(clickedBtn) clickedBtn.textContent=COPY.complet.ui.results.ctaBuyLabel||'Cumpără acum';
+  });
+}
 </script>
 </body>
 </html>
