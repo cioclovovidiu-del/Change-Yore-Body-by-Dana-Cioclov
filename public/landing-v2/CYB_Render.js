@@ -265,7 +265,7 @@ function renderTransition(s, P, A, btn) {
     '<div class="block-tag ' + s.blockColor + '">' + s.block + '</div>' +
     '<h2>' + s.title + '</h2>' +
     '<p>' + _tBody + '</p>' + miniHTML +
-    '<div id="transReadHint" style="text-align:center;font-size:0.78rem;color:var(--teal-glow);font-style:italic;margin-top:14px;transition:opacity 0.4s">Citește mesajul înainte să continui...</div>' +
+    '<div id="transReadHint" style="text-align:center;font-size:0.78rem;color:var(--teal-glow);font-style:italic;margin-top:14px;transition:opacity 0.4s">Ia-ți un moment să citești — e pentru tine ✨</div>' +
   '</div></div>';
 }
 
@@ -330,6 +330,33 @@ function renderCompletResults(s, P, A, btn, resetHtml) {
   if (STATE.profile.gdpr && !STATE._completEmailSent) {
     STATE._completEmailSent = true;
     try { fetch('/api/send-email', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({type: 'complet', profile: STATE.profile, ans: STATE.ans})}).catch(function() {}); } catch(e) {}
+  }
+
+  // ── D6: Pre-result anticipation animation ──
+  // Show a brief "building your profile" state before results appear (first time only)
+  if (!STATE._anticipationShown) {
+    STATE._anticipationShown = true;
+    var main = document.getElementById('main');
+    main.innerHTML = '<div class="slide active" style="text-align:center;padding:60px 24px">' +
+      '<div style="font-size:1.5rem;margin-bottom:16px">✨</div>' +
+      '<h2 style="color:white;font-size:1.15rem;margin-bottom:12px">' + (P.name ? P.name + ', ' : '') + 'analizăm răspunsurile tale...</h2>' +
+      '<p style="color:var(--text);font-size:0.88rem;margin-bottom:24px">Combinăm ' + totalQ(buildVisible(STEPS_COMPLET, P, A)) + ' răspunsuri cu profilul tău metabolic pentru un rezultat 100% personalizat.</p>' +
+      '<div class="anticipation-dots" style="display:flex;justify-content:center;gap:8px;margin-bottom:20px">' +
+        '<span style="width:8px;height:8px;border-radius:50%;background:var(--teal-glow);animation:antPulse 1.2s ease-in-out infinite"></span>' +
+        '<span style="width:8px;height:8px;border-radius:50%;background:var(--teal-glow);animation:antPulse 1.2s ease-in-out 0.2s infinite"></span>' +
+        '<span style="width:8px;height:8px;border-radius:50%;background:var(--teal-glow);animation:antPulse 1.2s ease-in-out 0.4s infinite"></span>' +
+      '</div>' +
+      '<p style="color:rgba(255,255,255,0.4);font-size:0.75rem;font-style:italic">Profilul tău se construiește...</p>' +
+    '</div>';
+    // Inject keyframe animation if not already present
+    if (!document.getElementById('antPulseStyle')) {
+      var styleEl = document.createElement('style');
+      styleEl.id = 'antPulseStyle';
+      styleEl.textContent = '@keyframes antPulse{0%,100%{opacity:0.3;transform:scale(0.8)}50%{opacity:1;transform:scale(1.2)}}';
+      document.head.appendChild(styleEl);
+    }
+    setTimeout(function() { render(); }, 2800);
+    return main.innerHTML;
   }
 
   // Lock CTA area for 3.5 seconds to ensure message is read
@@ -404,14 +431,69 @@ function renderCompletResults(s, P, A, btn, resetHtml) {
   var stressLabel = cStress > 65 ? SL.high : (cStress > 40 ? SL.moderate : SL.low);
   var hormonalLabel = cHormonal > 60 ? HL.high : (cHormonal > 35 ? HL.moderate : HL.low);
 
+  // ── D7: Key Takeaways — personalized observations from real data ──
+  var _d7Takeaways = [];
+  // Stress observation
+  if (cStress > 65) {
+    _d7Takeaways.push({icon:'🔴', text:'Nivelul tău de stres este ridicat — cortizolul probabil îți influențează greutatea mai mult decât alimentația în sine.'});
+  } else if (cStress > 40) {
+    _d7Takeaways.push({icon:'🟡', text:'Stresul tău moderat sugerează că un plan bazat pe consistență va funcționa mai bine decât restricții severe.'});
+  } else {
+    _d7Takeaways.push({icon:'🟢', text:'Nivelul tău scăzut de stres e un avantaj real — corpul tău e pregătit să răspundă bine la schimbări.'});
+  }
+  // Hormonal observation
+  if (cHormonal > 60) {
+    _d7Takeaways.push({icon:'💜', text:'Schimbările hormonale pe care le traversezi cer o abordare adaptată — nu doar „mănâncă mai puțin, mișcă-te mai mult".'});
+  } else if (cHormonal > 35) {
+    _d7Takeaways.push({icon:'💛', text:'Corpul tău traversează ajustări hormonale moderate — planul va ține cont de ele pentru rezultate reale.'});
+  }
+  // Meal rhythm / emotional eating
+  if (A.q14 === 0) {
+    _d7Takeaways.push({icon:'🍽️', text:'Cu 1–2 mese pe zi, metabolismul tău poate fi în „mod conservare". Restructurarea meselor poate face diferența.'});
+  } else if (A.q14 === 4) {
+    _d7Takeaways.push({icon:'🍽️', text:'Lipsa unui ritm alimentar clar îți perturbă metabolismul. Structura meselor va fi prioritară în planul tău.'});
+  } else if (A.q15 === 0) {
+    _d7Takeaways.push({icon:'💡', text:'Mâncatul emoțional frecvent nu e lipsă de voință — e biologie. Planul tău va include strategii concrete pentru gestionare.'});
+  }
+  // Diet history
+  if (A.q17 >= 3) {
+    _d7Takeaways.push({icon:'🔄', text:'Ai experiență cu multe diete anterioare — ai nevoie de un plan sustenabil, nu de încă un restart drastic.'});
+  } else if (A.q17 === 0) {
+    _d7Takeaways.push({icon:'✨', text:'Nu ai experiență cu diete — asta e un avantaj. Corpul tău va răspunde bine la o primă abordare structurată.'});
+  }
+  // Sleep
+  if ((A.q5 || 0) >= 2) {
+    _d7Takeaways.push({icon:'🌙', text:'Somnul tău afectează producția de leptină și grelină — hormonii care controlează foamea și sațietatea.'});
+  }
+  _d7Takeaways = _d7Takeaways.slice(0, 4);
+  var _d7TakeawaysHtml = '';
+  if (_d7Takeaways.length > 0) {
+    _d7TakeawaysHtml = '<div class="res-section" style="margin-top:8px">' +
+      '<h3 style="font-size:1.05rem;margin-bottom:4px">Ce am observat din răspunsurile tale</h3>' +
+      '<p style="font-size:0.75rem;color:var(--text);margin-bottom:14px">Observații personalizate pe baza celor ' + cTotalQ + ' de răspunsuri:</p>' +
+      '<div style="display:flex;flex-direction:column;gap:10px">';
+    for (var _ti = 0; _ti < _d7Takeaways.length; _ti++) {
+      _d7TakeawaysHtml += '<div style="display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:10px;background:rgba(42,165,160,0.04);border:1px solid rgba(42,165,160,0.08)">' +
+        '<span style="font-size:1.1rem;flex-shrink:0;line-height:1.4">' + _d7Takeaways[_ti].icon + '</span>' +
+        '<p style="font-size:0.82rem;color:rgba(255,255,255,0.75);line-height:1.6;margin:0">' + _d7Takeaways[_ti].text + '</p>' +
+      '</div>';
+    }
+    _d7TakeawaysHtml += '</div></div>';
+  }
+
   return '<div class="slide active" style="padding-top:24px">' +
+    // ── SECTION 1: HEADER / IDENTITY ──
     '<div style="text-align:center;margin-bottom:28px">' +
       '<div class="block-tag teal">' + CR.headerTag + '</div>' +
       '<h2 style="font-family:var(--serif);font-size:1.6rem;color:white;margin:12px 0 4px">' + CR.headerTitle(P.name) + '</h2>' +
       '<p style="font-size:0.82rem">' + CR.routePrefix + ': <strong style="color:var(--gold)">' + COPY.route.get(P.moment) + '</strong> · ' + cTotalQ + ' ' + CR.analyzedSuffix + '</p>' +
     '</div>' +
     '<div class="emo-msg show" style="margin-bottom:20px">' + _cValText + '</div>' +
+    // ── SECTION 2: PERSONAL LETTER ──
     _cLetterHtml +
+    // ── SECTION 3: KEY TAKEAWAYS (D7) ──
+    _d7TakeawaysHtml +
+    // ── SECTION 4: METABOLIC PROFILE + SCORES ──
     '<div class="profile-card">' +
       '<div style="font-size:0.7rem;color:var(--text);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px">' + CR.profileLabel + '</div>' +
       '<div class="profile-name" style="color:' + cProfile.color + '">' + cProfile.name + '</div>' +
@@ -471,7 +553,7 @@ function renderCompletResults(s, P, A, btn, resetHtml) {
         '</div>' +
       '</div>' +
     '</div>' +
-    // B6: Recipe preview — Day 1 full + shopping list + blurred teaser
+    // ── SECTION 5: MEAL PREVIEW (D7 improved) ──
     (function() {
       try {
         if (typeof buildDayPlan === 'function' && typeof formatDayPlanHtml === 'function') {
@@ -479,7 +561,10 @@ function renderCompletResults(s, P, A, btn, resetHtml) {
           if (_rPlan && _rPlan.slots) {
             var _rHtml = formatDayPlanHtml(_rPlan);
             if (_rHtml) {
-              var out = '<div class="res-section"><h3>🍽️ Planul tău alimentar — Ziua model</h3><div class="res-card">' + _rHtml + '</div></div>';
+              var out = '<div class="res-section">' +
+                '<h3>🍽️ Nutriție personalizată — Ziua ta model</h3>' +
+                '<p style="font-size:0.75rem;color:var(--text);margin-bottom:10px;line-height:1.5">Aceasta este o zi model construită din profilul tău metabolic, preferințele tale alimentare și necesarul tău caloric de <strong style="color:white">' + Math.round(cTdee) + ' kcal</strong>.</p>' +
+                '<div class="res-card">' + _rHtml + '</div></div>';
               // Shopping list (B4)
               try {
                 if (typeof shoppingList === 'function' && typeof formatShoppingListHtml === 'function') {
@@ -501,8 +586,8 @@ function renderCompletResults(s, P, A, btn, resetHtml) {
                 '</div>' +
                 '<div style="position:absolute;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;text-align:center">' +
                   '<div style="background:rgba(15,15,20,0.7);padding:14px 24px;border-radius:12px;border:1px solid rgba(201,168,76,0.2)">' +
-                    '<p style="color:var(--gold);font-size:0.85rem;font-weight:600;margin:0">🔒 6 zile rămase</p>' +
-                    '<p style="color:var(--text);font-size:0.75rem;margin:4px 0 0">Deblochează planul complet cu CYB</p>' +
+                    '<p style="color:var(--gold);font-size:0.85rem;font-weight:600;margin:0">🔒 6 zile rămase — plan complet personalizat</p>' +
+                    '<p style="color:var(--text);font-size:0.75rem;margin:4px 0 0">Incluse în pachetele CYB</p>' +
                   '</div>' +
                 '</div>' +
               '</div>';
@@ -513,7 +598,7 @@ function renderCompletResults(s, P, A, btn, resetHtml) {
       } catch(e) {}
       return '';
     })() +
-    // B6: Training preview — Day 1 full + blurred teaser
+    // ── SECTION 6: TRAINING PREVIEW (D7 improved) ──
     (function() {
       try {
         if (typeof buildTrainingPlan === 'function' && typeof formatTrainingPlanHtml === 'function') {
@@ -521,7 +606,13 @@ function renderCompletResults(s, P, A, btn, resetHtml) {
           if (_tPlan && _tPlan.sessions && _tPlan.sessions.length > 0) {
             var _tHtml = formatTrainingPlanHtml(_tPlan);
             if (_tHtml) {
-              var out = '<div class="res-section"><h3>💪 Planul tău de antrenament — Săptămâna 1</h3><div class="res-card">' + _tHtml + '</div></div>';
+              var _tExpLabel = CR.expOptions[A.q13 || 0] || 'Începător';
+              var _tTimeLabel = CR.timeOptions[A.q8 || 2] || '20-30 min';
+              var _tEquipCount = (A.q9 || []).length;
+              var out = '<div class="res-section">' +
+                '<h3>💪 Antrenament personalizat — Săptămâna 1</h3>' +
+                '<p style="font-size:0.75rem;color:var(--text);margin-bottom:10px;line-height:1.5">Adaptat nivelului tău <strong style="color:white">' + _tExpLabel + '</strong>, cu sesiuni de <strong style="color:white">' + _tTimeLabel + '</strong> și ' + _tEquipCount + ' tipuri de echipament.</p>' +
+                '<div class="res-card">' + _tHtml + '</div></div>';
               // Blurred teaser: remaining weeks
               out += '<div class="res-section" style="position:relative;overflow:hidden">' +
                 '<div style="filter:blur(6px);-webkit-filter:blur(6px);pointer-events:none;opacity:0.5">' +
@@ -534,8 +625,8 @@ function renderCompletResults(s, P, A, btn, resetHtml) {
                 '</div>' +
                 '<div style="position:absolute;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;text-align:center">' +
                   '<div style="background:rgba(15,15,20,0.7);padding:14px 24px;border-radius:12px;border:1px solid rgba(201,168,76,0.2)">' +
-                    '<p style="color:var(--gold);font-size:0.85rem;font-weight:600;margin:0">🔒 11 săptămâni rămase</p>' +
-                    '<p style="color:var(--text);font-size:0.75rem;margin:4px 0 0">Deblochează programul complet cu CYB</p>' +
+                    '<p style="color:var(--gold);font-size:0.85rem;font-weight:600;margin:0">🔒 11 săptămâni de progresie</p>' +
+                    '<p style="color:var(--text);font-size:0.75rem;margin:4px 0 0">Programul complet adaptat pe profilul tău</p>' +
                   '</div>' +
                 '</div>' +
               '</div>';
@@ -546,14 +637,25 @@ function renderCompletResults(s, P, A, btn, resetHtml) {
       } catch(e) {}
       return '';
     })() +
-    '<div style="text-align:center;padding:24px 0;border-top:1px solid rgba(255,255,255,0.06);margin-top:12px">' +
-      '<p style="font-size:0.88rem;color:var(--text);line-height:1.8;margin-bottom:12px">' + _cResText + '</p>' +
+    // ── D7: Value bridge — connect insight to action ──
+    '<div style="text-align:center;padding:24px 16px;margin-top:8px">' +
+      '<p style="font-size:0.88rem;color:var(--text);line-height:1.8;margin-bottom:6px">' + _cResText + '</p>' +
+      '<p style="font-size:0.85rem;color:rgba(255,255,255,0.6);line-height:1.7;margin-top:14px">Acum ai văzut direcția. Planul complet înseamnă să transformăm aceste date într-un sistem clar — nutriție, antrenament și ghidare — totul adaptat corpului și ritmului tău.</p>' +
       '<p style="margin-top:16px;font-size:0.88rem;font-style:italic;color:var(--teal-glow)">' + CR.finalQuote + '</p>' +
     '</div>' +
-    '<div id="completReadHint" style="text-align:center;font-size:0.78rem;color:var(--teal-glow);font-style:italic;margin-bottom:10px;transition:opacity 0.4s">Citește mesajul înainte să continui...</div>' +
-    '<div id="completCtaZone" style="opacity:0.5;pointer-events:none;transition:opacity 0.5s;text-align:center;padding:28px 20px;margin-top:20px;border-radius:16px;background:linear-gradient(135deg,rgba(42,165,160,0.08),rgba(201,168,76,0.06));border:1px solid rgba(201,168,76,0.15)">' +
+    // ── SECTION 7: UPGRADE CTA (D7 improved) ──
+    '<div id="completReadHint" style="text-align:center;font-size:0.78rem;color:var(--teal-glow);font-style:italic;margin-bottom:10px;transition:opacity 0.4s">Ia-ți un moment să citești ce urmează ✨</div>' +
+    '<div id="completCtaZone" style="opacity:0.5;pointer-events:none;transition:opacity 0.5s;text-align:center;padding:28px 20px;margin-top:12px;border-radius:16px;background:linear-gradient(135deg,rgba(42,165,160,0.08),rgba(201,168,76,0.06));border:1px solid rgba(201,168,76,0.15)">' +
       '<h3 style="font-family:var(--serif);font-size:1.3rem;color:white;margin-bottom:8px">' + CR.ctaHeading + '</h3>' +
-      '<p style="font-size:0.85rem;color:var(--text);line-height:1.7;margin-bottom:18px">' + CR.ctaBody + '</p>' +
+      '<p style="font-size:0.85rem;color:var(--text);line-height:1.7;margin-bottom:14px">' + CR.ctaBody + '</p>' +
+      // D7: Package deliverables clarity
+      '<div style="text-align:left;font-size:0.78rem;color:var(--text);line-height:1.8;margin-bottom:18px;padding:12px 16px;border-radius:10px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04)">' +
+        '<p style="color:rgba(255,255,255,0.5);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;font-weight:600">Ce primești în fiecare pachet:</p>' +
+        '<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:6px"><span style="color:var(--teal-glow);flex-shrink:0">✓</span><span>Plan alimentar personalizat pe profilul tău metabolic</span></div>' +
+        '<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:6px"><span style="color:var(--teal-glow);flex-shrink:0">✓</span><span>Program antrenament adaptat nivelului și echipamentului tău</span></div>' +
+        '<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:6px"><span style="color:var(--teal-glow);flex-shrink:0">✓</span><span>Raport complet de interpretare a profilului tău</span></div>' +
+        '<div style="display:flex;align-items:flex-start;gap:8px"><span style="color:var(--teal-glow);flex-shrink:0">✓</span><span>Ghidare pas cu pas — nu doar informație, ci direcție clară</span></div>' +
+      '</div>' +
       // C1: Package cards with Stripe checkout buttons
       (function() {
         var pkgs = CR.packages || [];
@@ -573,18 +675,22 @@ function renderCompletResults(s, P, A, btn, resetHtml) {
           cards += '<span style="font-family:var(--serif);font-size:1.1rem;color:var(--gold);font-weight:700">' + _escLetterHtml(pk.price) + (pk.old ? ' <span style="font-size:0.72rem;color:var(--text);text-decoration:line-through">' + _escLetterHtml(pk.old) + '</span>' : '') + '</span>';
           cards += '</div>';
           cards += '<p style="font-size:0.75rem;color:var(--text);line-height:1.6;margin:0 0 12px">' + _escLetterHtml(pk.desc) + '</p>';
-          cards += '<button class="btn btn-gold" style="width:100%;padding:12px;font-size:0.88rem;cursor:pointer" onclick="cybCheckout(\'' + pk.id + '\')" data-pkg="' + pk.id + '">' + (CR.ctaBuyLabel || 'Cumpără acum') + '</button>';
+          cards += '<button class="btn btn-gold" style="width:100%;padding:12px;font-size:0.88rem;cursor:pointer" onclick="cybCheckout(\'' + pk.id + '\')" data-pkg="' + pk.id + '">' + (CR.ctaBuyLabel || 'Vreau planul meu personalizat →') + '</button>';
           cards += '</div>';
         }
         return cards;
       })() +
-      '<p style="font-size:0.72rem;color:var(--teal-glow);font-style:italic;opacity:0.7;line-height:1.5;margin:16px 0 12px">Cu cât începi mai repede, cu atât corectăm mai repede ce te blochează acum.</p>' +
+      '<p style="font-size:0.75rem;color:rgba(255,255,255,0.45);font-style:italic;line-height:1.5;margin:16px 0 12px">Diferența nu e doar în informație — e în felul în care totul se leagă pentru tine.</p>' +
       // WhatsApp fallback (preserved)
       '<div style="height:1px;background:rgba(255,255,255,0.06);margin:16px 0"></div>' +
-      '<p style="font-size:0.78rem;color:var(--text);margin-bottom:8px">' + (CR.ctaWhatsAppAlt || 'Preferi să vorbești cu noi mai întâi?') + '</p>' +
+      '<p style="font-size:0.78rem;color:var(--text);margin-bottom:8px">' + (CR.ctaWhatsAppAlt || 'Preferi să vorbești cu Daniela mai întâi?') + '</p>' +
       '<a href="' + CR.ctaDirectWhatsApp + '" target="_blank" rel="noopener" style="display:inline-block;padding:10px 24px;font-size:0.82rem;color:rgba(37,211,102,0.9);text-decoration:none;border:1px solid rgba(37,211,102,0.2);border-radius:8px;transition:background 0.2s" onclick="try{gtag(\'event\',\'whatsapp_click\',{source:\'complet_results_direct\'});fbq(\'track\',\'Contact\');}catch(e){}">' + CR.ctaDirectButton + '</a>' +
       '<p style="margin-top:10px;font-size:0.72rem;color:var(--text)">Sau intră în comunitatea CYB:</p>' +
       '<a href="' + CR.ctaGroupWhatsApp + '" target="_blank" rel="noopener" style="display:inline-block;margin-top:4px;font-size:0.72rem;color:rgba(37,211,102,0.6);text-decoration:underline;transition:color 0.2s" onclick="try{gtag(\'event\',\'whatsapp_click\',{source:\'complet_results_group\'});fbq(\'track\',\'Contact\');}catch(e){}">' + CR.ctaGroupButton + '</a>' +
+    '</div>' +
+    // ── SECTION 8: REASSURANCE ──
+    '<div style="text-align:center;margin-top:20px;padding:16px">' +
+      '<p style="font-size:0.75rem;color:rgba(255,255,255,0.35);line-height:1.6">Datele tale sunt protejate și nu sunt partajate cu nimeni. Poți reveni oricând la aceste rezultate.</p>' +
     '</div>' +
     resetHtml +
   '</div>';

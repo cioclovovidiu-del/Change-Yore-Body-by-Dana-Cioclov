@@ -348,12 +348,19 @@ function render(){
   document.getElementById('progBar').style.width=pct+'%';
   var _pw=document.getElementById('progBar').parentNode;if(_pw)_pw.setAttribute('aria-valuenow',pct);
 
-  // Step info
+  // Step info with D6 momentum cues
   var info='';
   if(STATE.phase==='MINI' && s.type!=='welcome' && s.type!=='mini_results'){
     info='Pas '+(STATE.step)+' din '+(steps.length-2);
   } else if(STATE.phase==='COMPLET' && s.id && s.id.startsWith('q')){
-    info='Pas '+curQ(steps,STATE.step)+' din '+totalQ(steps);
+    var _cQ=curQ(steps,STATE.step), _tQ=totalQ(steps);
+    info='Pas '+_cQ+' din '+_tQ;
+    // D6: Momentum micro-cues at key progress points
+    var _pctDone=Math.round((_cQ/_tQ)*100);
+    if(_pctDone>=25 && _pctDone<50) info+=' · Foarte bine!';
+    else if(_pctDone>=50 && _pctDone<75) info+=' · Peste jumătate!';
+    else if(_pctDone>=75 && _pctDone<95) info+=' · Aproape gata!';
+    else if(_pctDone>=95) info+=' · Ultimul pas!';
   } else if(s.type==='transition'){
     info=s.block||'';
   }
