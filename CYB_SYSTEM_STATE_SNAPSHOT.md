@@ -1,7 +1,8 @@
 # CYB SYSTEM — CURRENT STATE SNAPSHOT
 
 > Generated: 2026-03-23
-> Covers: deployed production state + uncommitted local changes (D6, D7)
+> Updated: 2026-03-23 (post D6+D7 deploy)
+> Covers: deployed production state — all changes live
 
 ---
 
@@ -9,7 +10,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Latest deployed commit** | `0069f77` — D5: UX flow polish — smooth scroll, activity auto-continue, step counter |
+| **Latest deployed commit** | `38dec78` — D6+D7: psych flow + results impact layer |
 | **Branch** | `main` (local = origin/main) |
 | **Remote** | `https://github.com/cioclovovidiu-del/Change-Yore-Body-by-Dana-Cioclov.git` |
 | **Hosting** | Vercel |
@@ -17,12 +18,8 @@
 | **Framework** | Next.js 16.1.6 (App Router) |
 | **Runtime** | Node.js (dynamic routes), Edge not used |
 
-### Uncommitted Local Changes (NOT deployed)
-| File | Change |
-|------|--------|
-| `public/landing-v2/CYB_Copy.js` | D6: question/transition/UI copy rewrite + D7: no additional copy changes |
-| `public/landing-v2/CYB_Render.js` | D6: pre-result anticipation + transition read hint + D7: key takeaways, meal/training preview improvements, value bridge, CTA upgrade, deliverables checklist |
-| `public/landing-v2/CYB_Chestionar_Unified.html` | D6: momentum cues in step counter |
+### Uncommitted Local Changes
+None. All changes deployed.
 
 ---
 
@@ -359,14 +356,14 @@ NO_KNEE, NO_BACK_L, NO_BACK_C, NO_SHOULDER, NO_HIP, NO_DISC, PELVIC_SAFE, NO_DIA
 | 15 | Results text + Daniela quote | ✅ engine message |
 | 16 | CTA zone (3 packages + WhatsApp) | ❌ static packages |
 
-**Local D7 additions (NOT deployed):**
-- Key Takeaways block (after letter, before profile card) — 3-4 personalized observations
-- Improved meal preview heading with TDEE context
-- Improved training preview heading with level/time/equipment context
-- Value bridge paragraph before CTA
-- Deliverables checklist in CTA zone
-- Reassurance footer
-- D6 pre-result anticipation animation (2.8s)
+**D6+D7 additions (deployed `38dec78`):**
+- D6: Pre-result anticipation animation (2.8s, first render only)
+- D7: Key Takeaways block (after letter, before profile card) — 3-4 personalized observations from stress/hormonal/meal/diet/sleep data
+- D7: Improved meal preview heading with TDEE context line
+- D7: Improved training preview heading with experience level, session time, equipment count
+- D7: Value bridge paragraph connecting insights → action before CTA
+- D7: Deliverables checklist in CTA zone (4 items: plan alimentar, program antrenament, raport, ghidare)
+- D7: Reassurance footer (data protection message)
 
 ### Recipe System
 - **Database:** 90 recipes (20 breakfast, 25 lunch, 25 dinner, 20 snacks)
@@ -456,16 +453,12 @@ NO_KNEE, NO_BACK_L, NO_BACK_C, NO_SHOULDER, NO_HIP, NO_DISC, PELVIC_SAFE, NO_DIA
 | D2 | Post-purchase operations audit | ✅ PASS (verify-only) |
 | D4 | Questionnaire restructure | ✅ PASS (deployed) |
 | D5 | UX flow optimization | ✅ PASS (deployed) |
-| D6 | Psycho-flow conversion layer | ✅ DONE (local, not deployed) |
-| D7 | Results impact layer | ✅ DONE (local, not deployed) |
+| D6 | Psycho-flow conversion layer | ✅ PASS (deployed `38dec78`) |
+| D7 | Results impact layer | ✅ PASS (deployed `38dec78`) |
 
 ---
 
 ## 9. OPEN AREAS (REAL ONLY)
-
-### Not Deployed
-- **D6 changes** — question copy rewrite, transition copy, momentum cues, pre-result anticipation — in 3 modified files, not committed
-- **D7 changes** — key takeaways, meal/training preview improvements, value bridge, CTA upgrade — in same 3 modified files, not committed
 
 ### Not Implemented
 - **Automated Premium/Coaching report delivery** — only Essential gets auto-report
@@ -501,4 +494,4 @@ NO_KNEE, NO_BACK_L, NO_BACK_C, NO_SHOULDER, NO_HIP, NO_DISC, PELVIC_SAFE, NO_DIA
 
 ---
 
-*This snapshot reflects the real deployed system state as of commit `0069f77` plus uncommitted D6/D7 local changes.*
+*This snapshot reflects the real deployed system state as of commit `38dec78`. All changes live on changeyourbody.ro.*
