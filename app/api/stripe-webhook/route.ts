@@ -426,7 +426,7 @@ async function triggerFulfillment(
   if (resend && payload.customerEmail) {
     try {
       const { error } = await resend.emails.send({
-        from: emailFrom("Change Your Body"),
+        from: emailFrom(),
         replyTo: emailReplyTo,
         to: payload.customerEmail,
         subject: `Confirmare comandă — ${payload.packageName}`,
@@ -453,7 +453,7 @@ async function triggerFulfillment(
   if (resend) {
     try {
       const { error } = await resend.emails.send({
-        from: emailFrom("CYB System"),
+        from: emailFrom(),
         to: DANIELA_EMAIL,
         subject: `💰 Plată nouă: ${payload.packageName} — ${payload.customerName || "Client"}`,
         html: buildInternalNotificationHtml(payload),
@@ -489,7 +489,7 @@ async function triggerFulfillment(
         reportUrl,
       });
       const { error } = await resend.emails.send({
-        from: emailFrom("Change Your Body"),
+        from: emailFrom(),
         replyTo: emailReplyTo,
         to: payload.customerEmail,
         subject: `Raportul tău metabolic personalizat — Change Your Body`,

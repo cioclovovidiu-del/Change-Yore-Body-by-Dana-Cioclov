@@ -252,7 +252,7 @@ export async function POST(request: Request) {
 
     // Send internal notification to Daniela (existing behavior, all types)
     const { error } = await resend.emails.send({
-      from: emailFrom("CYB Chestionar"),
+      from: emailFrom(),
       to: DANIELA_EMAIL,
       subject,
       html,
@@ -274,7 +274,7 @@ export async function POST(request: Request) {
       if (userEmail && userEmail.includes("@")) {
         try {
           const { error: userErr } = await resend.emails.send({
-            from: emailFrom("Change Your Body"),
+            from: emailFrom(),
             replyTo: emailReplyTo,
             to: userEmail,
             subject: "Profilul tău Change Your Body este gata",
