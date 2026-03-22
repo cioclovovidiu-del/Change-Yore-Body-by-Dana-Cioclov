@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import Stripe from "stripe";
 
-// ── C8: Package-aware success page with delivery guidance ──────────
+// ── C8+C12: Package-aware success page with delivery guidance ────────
 // Reads session_id from Stripe redirect to show package-specific messaging.
 // Essential: links to C7 browser report. Premium/Coaching: honest manual timeline.
+// C12: email verification guidance, missing-email fallback, customer email display.
 // Graceful fallback: if Stripe unavailable, shows generic success (C1 behavior).
 
 export const metadata: Metadata = {
@@ -28,6 +29,7 @@ const PACKAGE_DISPLAY: Record<
 async function getSessionInfo(sessionId: string): Promise<{
   packageId: string;
   customerName: string;
+  customerEmail: string;
   fulfilled: boolean;
 } | null> {
   if (!process.env.STRIPE_SECRET_KEY) return null;
@@ -41,6 +43,10 @@ async function getSessionInfo(sessionId: string): Promise<{
       customerName:
         session.metadata?.customerName ||
         session.customer_details?.name ||
+        "",
+      customerEmail:
+        session.metadata?.customerEmail ||
+        session.customer_details?.email ||
         "",
       fulfilled: session.metadata?.cyb_fulfilled === "true",
     };
@@ -61,6 +67,7 @@ export default async function CheckoutSuccessPage({
   const packageId = info?.packageId || "";
   const pkgDisplay = PACKAGE_DISPLAY[packageId] || null;
   const firstName = info?.customerName?.split(" ")[0] || "";
+  const customerEmail = info?.customerEmail || "";
   const isEssential = packageId === "essential";
   const isFulfilled = info?.fulfilled === true;
 
@@ -97,45 +104,140 @@ export default async function CheckoutSuccessPage({
           border: "1px solid rgba(201,168,76,0.15)",
         }}
       >
-        {/* ── Checkmark ─────────────────────────────────────── */}
-        <div style={{ fontSize: "3rem", marginBottom: 16 }}>✓</div>
-
-        {/* ── Heading — personalized if name available ──────── */}
+        {/* ── C12: Title + Intro ─────────────────────────────── */}
         <h1
           style={{
             fontFamily: "var(--font-cormorant), Georgia, serif",
             fontSize: "1.8rem",
             color: "white",
             fontWeight: 600,
-            marginBottom: 12,
+            marginBottom: 8,
+          }}
+        >
+          Plata a fost confirmată ✅
+        </h1>
+        <p
+          style={{
+            fontSize: "1rem",
+            color: "rgba(255,255,255,0.7)",
+            lineHeight: 1.6,
+            marginBottom: 8,
           }}
         >
           {firstName
-            ? `Mulțumim, ${firstName}!`
-            : "Mulțumim pentru încredere!"}
-        </h1>
+            ? `Îți mulțumim, ${firstName}! Totul este pregătit.`
+            : "Îți mulțumim! Totul este pregătit."}
+        </p>
+        {pkgDisplay && (
+          <p
+            style={{
+              fontSize: "0.88rem",
+              color: "rgba(255,255,255,0.5)",
+              marginBottom: 24,
+            }}
+          >
+            Pachetul{" "}
+            <strong style={{ color: "#C9A84C" }}>{pkgDisplay.label}</strong>{" "}
+            este acum activ.
+          </p>
+        )}
+        {!pkgDisplay && <div style={{ marginBottom: 24 }} />}
 
-        {/* ── Confirmation text — package-aware ─────────────── */}
-        <p
+        {/* ── C12: Email verification section ─────────────── */}
+        <div
           style={{
-            fontSize: "0.92rem",
-            color: "rgba(255,255,255,0.6)",
-            lineHeight: 1.8,
-            marginBottom: 24,
+            background: "rgba(255,255,255,0.03)",
+            borderRadius: 14,
+            padding: "20px 20px",
+            marginBottom: 20,
+            border: "1px solid rgba(255,255,255,0.08)",
+            textAlign: "left",
           }}
         >
-          Plata ta a fost procesată cu succes.
-          {pkgDisplay && (
-            <>
-              {" "}
-              Pachetul{" "}
-              <strong style={{ color: "#C9A84C" }}>
-                {pkgDisplay.label}
-              </strong>{" "}
-              este acum activ.
-            </>
-          )}
-        </p>
+          <p
+            style={{
+              fontSize: "0.9rem",
+              color: "#C9A84C",
+              fontWeight: 600,
+              margin: "0 0 10px",
+            }}
+          >
+            📩 Verifică emailul
+          </p>
+          <p
+            style={{
+              fontSize: "0.82rem",
+              color: "rgba(255,255,255,0.6)",
+              lineHeight: 1.7,
+              margin: "0 0 10px",
+            }}
+          >
+            Ți-am trimis toate detaliile pe emailul introdus în comandă.
+            {customerEmail && (
+              <>
+                <br />
+                <span style={{ color: "rgba(255,255,255,0.4)", fontSize: "0.78rem" }}>
+                  Emailul tău:{" "}
+                  <strong style={{ color: "rgba(255,255,255,0.7)" }}>
+                    {customerEmail}
+                  </strong>
+                </span>
+              </>
+            )}
+          </p>
+          <p
+            style={{
+              fontSize: "0.8rem",
+              color: "rgba(255,255,255,0.45)",
+              lineHeight: 1.7,
+              margin: 0,
+            }}
+          >
+            Te rugăm să verifici: <strong style={{ color: "rgba(255,255,255,0.6)" }}>Inbox</strong>
+            {" · "}
+            <strong style={{ color: "rgba(255,255,255,0.6)" }}>Spam / Promotions</strong>
+          </p>
+        </div>
+
+        {/* ── C12: Missing email fallback ─────────────────── */}
+        <div
+          style={{
+            background: "rgba(201,168,76,0.05)",
+            borderRadius: 14,
+            padding: "16px 20px",
+            marginBottom: 24,
+            border: "1px solid rgba(201,168,76,0.12)",
+            textAlign: "left",
+          }}
+        >
+          <p
+            style={{
+              fontSize: "0.82rem",
+              color: "rgba(255,255,255,0.55)",
+              lineHeight: 1.7,
+              margin: 0,
+            }}
+          >
+            ❗ <strong style={{ color: "rgba(255,255,255,0.7)" }}>Nu ai primit emailul?</strong>
+            <br />
+            Dacă nu îl vezi în 2–3 minute, scrie-ne direct pe WhatsApp și
+            îți trimitem imediat:
+            <br />
+            <a
+              href="https://wa.me/40721333040?text=Salut%20Daniela%2C%20tocmai%20am%20pl%C4%83tit%20dar%20nu%20am%20primit%20emailul%20de%20confirmare."
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                color: "#25D366",
+                fontWeight: 600,
+                textDecoration: "underline",
+                fontSize: "0.82rem",
+              }}
+            >
+              Scrie pe WhatsApp →
+            </a>
+          </p>
+        </div>
 
         {/* ── C8: Essential report CTA (C7 reuse) ──────────── */}
         {isEssential && session_id && (
