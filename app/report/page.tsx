@@ -11,6 +11,8 @@ import {
 
 // Disable static generation — this page is always dynamic
 export const dynamic = "force-dynamic";
+// Ensure Node.js runtime (full env var access, not Edge)
+export const runtime = "nodejs";
 
 const PACKAGE_NAMES: Record<string, string> = {
   essential: "REBUILD Esențial (199€)",
