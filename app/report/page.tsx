@@ -116,22 +116,8 @@ export default async function ReportPage({
     );
   }
 
-  // Guard: Essential only (for now)
+  // D10: Report available for all paid packages (essential, premium, coaching)
   const packageId = session.metadata?.packageId || "";
-  if (packageId !== "essential") {
-    return (
-      <html>
-        <body
-          dangerouslySetInnerHTML={{
-            __html: errorPage(
-              "Raport indisponibil",
-              "Raportul online este disponibil momentan doar pentru pachetul Essential. Daniela te va contacta cu raportul tău complet."
-            ),
-          }}
-        />
-      </html>
-    );
-  }
 
   // Extract profile from session metadata
   const profile = extractProfile(session.metadata);

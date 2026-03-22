@@ -69,6 +69,7 @@ export default async function CheckoutSuccessPage({
   const firstName = info?.customerName?.split(" ")[0] || "";
   const customerEmail = info?.customerEmail || "";
   const isEssential = packageId === "essential";
+  const hasPaidPackage = ["essential", "premium", "coaching"].includes(packageId);
   const isFulfilled = info?.fulfilled === true;
 
   // Build "Ce urmează" steps based on package
@@ -239,8 +240,8 @@ export default async function CheckoutSuccessPage({
           </p>
         </div>
 
-        {/* ── C8: Essential report CTA (C7 reuse) ──────────── */}
-        {isEssential && session_id && (
+        {/* ── C8/D10: Report CTA for all paid packages ────── */}
+        {hasPaidPackage && session_id && (
           <div
             style={{
               background: "rgba(42,165,160,0.08)",
@@ -467,15 +468,17 @@ function buildSteps(
       },
       {
         step: "2",
-        text: "Daniela analizează profilul tău complet (24h)",
+        text: isFulfilled
+          ? "Raportul tău metabolic personalizat este gata (vezi mai sus)"
+          : "Raportul tău metabolic se generează automat (câteva minute)",
       },
       {
         step: "3",
-        text: "Primești planul premium personalizat: nutriție + antrenament + raport detaliat",
+        text: "Daniela pregătește planul premium complet: nutriție 30 zile + antrenament 12 săptămâni + raport detaliat (24h)",
       },
       {
         step: "4",
-        text: "Începi transformarea cu suport dedicat",
+        text: "Începi transformarea cu suport WhatsApp dedicat",
       },
     ];
   }
@@ -488,15 +491,17 @@ function buildSteps(
       },
       {
         step: "2",
-        text: "Daniela te contactează personal pentru programarea primei sesiuni",
+        text: isFulfilled
+          ? "Raportul tău metabolic personalizat este gata (vezi mai sus)"
+          : "Raportul tău metabolic se generează automat (câteva minute)",
       },
       {
         step: "3",
-        text: "Primești planul complet + acces la coaching 1-la-1",
+        text: "Daniela te contactează personal pentru programarea primei sesiuni de coaching",
       },
       {
         step: "4",
-        text: "Începi transformarea cu Daniela alături de tine la fiecare pas",
+        text: "Primești planul complet + coaching 1-la-1 + acces comunitate VIP",
       },
     ];
   }

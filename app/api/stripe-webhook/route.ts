@@ -161,6 +161,7 @@ const PACKAGE_ASSETS: Record<string, AssetEntry[]> = {
     { id: "meal_plan_30d", label: "Plan alimentar 30 zile", status: "pending_manual", channel: "email", note: "Daniela generates manually from questionnaire data" },
     { id: "training_12w", label: "Program antrenament 12 săptămâni", status: "pending_manual", channel: "email", note: "Daniela generates manually from questionnaire data" },
     { id: "full_report", label: "Raport complet analiză detaliată", status: "pending_manual", channel: "email", note: "Daniela generates manually from questionnaire data" },
+    { id: "profile_report", label: "Raport metabolic personalizat", status: "delivered", channel: "email", note: "D10: Automated via C6 — server-side calc from real profile data" },
     { id: "whatsapp_support_30d", label: "Suport WhatsApp 30 zile", status: "not_applicable", channel: "whatsapp", note: "Human service — Daniela initiates contact" },
     { id: "confirmation_email", label: "Email confirmare comandă", status: "delivered", channel: "email", note: "Automated via Resend (C3)" },
   ],
@@ -168,6 +169,7 @@ const PACKAGE_ASSETS: Record<string, AssetEntry[]> = {
     { id: "meal_plan_30d", label: "Plan alimentar 30 zile", status: "pending_manual", channel: "email", note: "Daniela generates manually from questionnaire data" },
     { id: "training_12w", label: "Program antrenament 12 săptămâni", status: "pending_manual", channel: "email", note: "Daniela generates manually from questionnaire data" },
     { id: "full_report", label: "Raport complet analiză detaliată", status: "pending_manual", channel: "email", note: "Daniela generates manually from questionnaire data" },
+    { id: "profile_report", label: "Raport metabolic personalizat", status: "delivered", channel: "email", note: "D10: Automated via C6 — server-side calc from real profile data" },
     { id: "coaching_1on1", label: "Coaching 1:1 cu Daniela", status: "not_applicable", channel: "manual", note: "Human service — Daniela schedules first session" },
     { id: "weekly_adjustments", label: "Ajustări săptămânale personalizate", status: "not_applicable", channel: "manual", note: "Human service — ongoing throughout program" },
     { id: "vip_community", label: "Acces comunitate VIP", status: "not_applicable", channel: "platform", note: "Human service — Daniela grants access" },
@@ -211,8 +213,8 @@ function buildDeliveryResult(
       if (emailSent) delivered.push(asset.id);
       else pending.push(asset.id);
     } else if (asset.id === "profile_report" && asset.status === "delivered") {
-      // C6: profile_report is "delivered" in manifest only for essential
-      // but actual delivery depends on whether we had profile data + sent it
+      // C6/D10: profile_report is "delivered" in manifest for all packages
+      // actual delivery depends on whether we had profile data + sent it
       if (profileReportSent) delivered.push(asset.id);
       else pending.push(asset.id);
     } else if (asset.status === "delivered") {
@@ -468,12 +470,11 @@ async function triggerFulfillment(
     }
   }
 
-  // 4. C6/C7: Metabolic profile report (Essential auto-deliverable)
+  // 4. C6/C7/D10: Metabolic profile report (all paid packages)
   if (
     resend &&
     payload.customerEmail &&
-    profile &&
-    payload.packageId === "essential"
+    profile
   ) {
     try {
       // C7: Build report URL for browser viewing
@@ -506,7 +507,7 @@ async function triggerFulfillment(
     } catch (err) {
       console.error("[fulfillment] Metabolic report exception:", err);
     }
-  } else if (payload.packageId === "essential" && !profile) {
+  } else if (!profile) {
     console.log(
       "[fulfillment] No profile data available — metabolic report skipped (pending manual)"
     );
