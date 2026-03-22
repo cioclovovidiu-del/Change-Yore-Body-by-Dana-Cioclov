@@ -149,14 +149,96 @@ function escapeHtml(str: string): string {
   return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
-// ── C9: User-facing follow-up email after COMPLET completion ────────
-// Sent immediately at questionnaire completion (only real trigger available).
-// Not a delayed recovery — no scheduler exists. Framed as "next steps" guidance.
-// Buyers will additionally receive C3 transactional emails from webhook — no conflict.
+// ── D1: High-conversion user follow-up email after COMPLET completion ──
+// Sent immediately at questionnaire completion. Uses real profile data
+// (route from moment, goal) for dynamic personalization.
+// Buyers will additionally receive C3 transactional emails from webhook.
+
+const ROUTE_LABELS = ['Postpartum','Divorț/Separare','Schimbări hormonale','Burnout','Când pierzi pe cineva drag','General'];
+const GOAL_NAMES = ['slăbire','tonifiere','energie','sănătate'];
+
+const ROUTE_INSIGHTS: Record<string, string[]> = {
+  'Burnout': [
+    'Corpul tău dă semne clare de oboseală metabolică',
+    'Nivelul de energie și recuperare este sub optim',
+    'Ai nevoie de o strategie inteligentă, nu doar disciplină',
+  ],
+  'Schimbări hormonale': [
+    'Semnale hormonale care îți blochează progresul',
+    'Corpul tău nu reacționează la diete standard',
+    'Ai nevoie de adaptare, nu restricție',
+  ],
+  'Postpartum': [
+    'Corpul tău trece printr-o perioadă de reconstrucție',
+    'Metabolismul se recalibrează — nu e vorba de voință',
+    'Ai nevoie de un plan care respectă ritmul tău',
+  ],
+  'Divorț/Separare': [
+    'Stresul emoțional îți afectează direct metabolismul',
+    'Corpul tău are nevoie de stabilitate, nu de restricții',
+    'O rutină structurată va face diferența reală acum',
+  ],
+  'Când pierzi pe cineva drag': [
+    'Doliul afectează profund echilibrul hormonal și metabolic',
+    'Corpul tău are nevoie de grijă, nu de presiune',
+    'Un plan adaptat momentului tău este esențial',
+  ],
+};
+
+// Goal-specific insights for weight_loss route
+const GOAL_INSIGHTS: Record<string, string[]> = {
+  'slăbire': [
+    'Ai un potențial foarte bun de slăbire controlată',
+    'Metabolismul tău răspunde bine la structură',
+    'Consistența va face diferența',
+  ],
+  'tonifiere': [
+    'Corpul tău este pregătit pentru tonifiere reală',
+    'Combinația nutriție + antrenament targetat va face diferența',
+    'Ai nevoie de un plan adaptat, nu de exerciții la întâmplare',
+  ],
+  'energie': [
+    'Nivelul tău de energie poate crește semnificativ',
+    'Alimentația corectă va schimba felul în care te simți zilnic',
+    'Un plan structurat readuce echilibrul',
+  ],
+  'sănătate': [
+    'Sănătatea ta merită o abordare personalizată',
+    'Prevenția activă începe cu nutriția corectă',
+    'Un plan adaptat ție face diferența pe termen lung',
+  ],
+};
+
 function buildCompletFollowUpHtml(profile: Record<string, unknown>): string {
   const name = escapeHtml(String(profile.name || ""));
   const greeting = name ? `Dragă ${name},` : "Bună,";
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://changeyourbody.ro";
+
+  // Resolve route from moment index
+  const momentIdx = typeof profile.moment === 'number' ? profile.moment : -1;
+  const routeLabel = (momentIdx >= 0 && momentIdx < ROUTE_LABELS.length) ? ROUTE_LABELS[momentIdx] : null;
+
+  // Resolve goal
+  const goalIdx = typeof profile.goal === 'number' ? profile.goal : -1;
+  const goalLabel = (goalIdx >= 0 && goalIdx < GOAL_NAMES.length) ? GOAL_NAMES[goalIdx] : null;
+
+  // Pick insights: route-specific first, then goal-specific for General route, else none
+  let insights: string[] | null = null;
+  if (routeLabel && ROUTE_INSIGHTS[routeLabel]) {
+    insights = ROUTE_INSIGHTS[routeLabel];
+  } else if (routeLabel === 'General' && goalLabel && GOAL_INSIGHTS[goalLabel]) {
+    insights = GOAL_INSIGHTS[goalLabel];
+  }
+
+  // Build subject-appropriate route label for display
+  const routeDisplay = routeLabel && routeLabel !== 'General' ? routeLabel : null;
+
+  // A. Micro-diagnostic block (only if insights available)
+  const diagnosticBlock = insights ? `
+      <div style="background:rgba(201,168,76,0.06);border-radius:10px;padding:16px 18px;border:1px solid rgba(201,168,76,0.15);margin-bottom:20px;">
+        <p style="color:#C9A84C;font-size:13px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;margin:0 0 12px;">📋 Ce am observat la tine:</p>
+        ${insights.map(i => `<p style="color:#e0e0e0;font-size:14px;line-height:1.7;margin:0 0 6px;padding-left:16px;position:relative;"><span style="position:absolute;left:0;color:#C9A84C;">•</span> ${escapeHtml(i)}</p>`).join('')}
+      </div>` : '';
 
   return `<!DOCTYPE html>
 <html>
@@ -169,11 +251,21 @@ function buildCompletFollowUpHtml(profile: Record<string, unknown>): string {
     </div>
 
     <div style="background:#141e29;border-radius:16px;padding:28px 24px;border:1px solid rgba(201,168,76,0.15);">
-      <p style="color:#e0e0e0;font-size:15px;line-height:1.8;margin:0 0 16px;">${greeting}</p>
+      <p style="color:#e0e0e0;font-size:15px;line-height:1.8;margin:0 0 8px;">${greeting}</p>
+
+      <!-- B. Emotional reframe -->
+      <p style="color:#ccc;font-size:14px;line-height:1.8;margin:0 0 8px;font-style:italic;">
+        Nu este vorba despre voință.<br>
+        Corpul tău are nevoie de direcția corectă.<br>
+        Iar asta este exact ce urmează să primești.
+      </p>
+
       <p style="color:#e0e0e0;font-size:15px;line-height:1.8;margin:0 0 20px;">
         Ai completat chestionarul Change Your Body — felicitări pentru acest prim pas!
-        Răspunsurile tale au fost analizate și profilul tău este gata.
+        Răspunsurile tale au fost analizate și profilul tău este gata.${routeDisplay ? ` Traseul tău: <strong style="color:#C9A84C;">${escapeHtml(routeDisplay)}</strong>.` : ''}
       </p>
+
+      <!-- A. Micro-diagnostic block (route/goal dependent) -->${diagnosticBlock}
 
       <div style="background:rgba(42,165,160,0.06);border-radius:10px;padding:16px;border:1px solid rgba(42,165,160,0.12);margin-bottom:20px;">
         <p style="color:#2AA5A0;font-size:13px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;margin:0 0 10px;">Ce urmează?</p>
@@ -184,13 +276,18 @@ function buildCompletFollowUpHtml(profile: Record<string, unknown>): string {
         </table>
       </div>
 
-      <div style="text-align:center;margin-bottom:20px;">
-        <a href="${escapeHtml(siteUrl)}/#mini-flow" style="display:inline-block;padding:14px 32px;background:linear-gradient(135deg,#2AA5A0,#1d8a86);color:#fff;border-radius:10px;text-decoration:none;font-size:15px;font-weight:600;">Vezi pachetele disponibile</a>
+      <!-- C. CTA upgrade -->
+      <div style="text-align:center;margin-bottom:8px;">
+        <a href="${escapeHtml(siteUrl)}/#mini-flow" style="display:inline-block;padding:14px 32px;background:linear-gradient(135deg,#2AA5A0,#1d8a86);color:#fff;border-radius:10px;text-decoration:none;font-size:15px;font-weight:600;">Vezi exact ce plan ți se potrivește →</a>
       </div>
+      <p style="text-align:center;color:#888;font-size:13px;margin:0 0 20px;">
+        Planul tău este deja conturat. Tot ce mai rămâne este să începi.
+      </p>
 
+      <!-- D. WhatsApp smart link -->
       <div style="text-align:center;padding-top:16px;border-top:1px solid rgba(255,255,255,0.06);">
         <p style="color:#999;font-size:13px;margin:0 0 12px;">Ai întrebări sau vrei ajutor să alegi? Scrie-i Danielei:</p>
-        <a href="https://wa.me/40721333040?text=${encodeURIComponent("Bună Daniela, am completat chestionarul Change Your Body și am câteva întrebări.")}" style="display:inline-block;padding:10px 24px;background:rgba(37,211,102,0.12);color:#25D366;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600;border:1px solid rgba(37,211,102,0.2);">Scrie pe WhatsApp</a>
+        <a href="https://wa.me/40721333040?text=Salut%20Daniela,%20am%20completat%20chestionarul%20CYB%20%C8%99i%20vreau%20mai%20multe%20detalii" style="display:inline-block;padding:10px 24px;background:rgba(37,211,102,0.12);color:#25D366;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600;border:1px solid rgba(37,211,102,0.2);">Scrie pe WhatsApp</a>
       </div>
     </div>
 
@@ -273,11 +370,17 @@ export async function POST(request: Request) {
       const userEmail = String(complet.profile.email || "").trim();
       if (userEmail && userEmail.includes("@")) {
         try {
+          // E. Subject line: route-aware variant if moment available
+          const mIdx = typeof complet.profile.moment === 'number' ? complet.profile.moment as number : -1;
+          const rLabel = (mIdx >= 0 && mIdx < ROUTE_LABELS.length) ? ROUTE_LABELS[mIdx] : null;
+          const userSubject = rLabel && rLabel !== 'General'
+            ? `Rezultatul tău: ${rLabel} — vezi ce înseamnă pentru tine`
+            : "Profilul tău este gata — și spune mai mult decât crezi";
           const { error: userErr } = await resend.emails.send({
             from: emailFrom(),
             replyTo: emailReplyTo,
             to: userEmail,
-            subject: "Profilul tău Change Your Body este gata",
+            subject: userSubject,
             html: buildCompletFollowUpHtml(complet.profile),
           });
           if (userErr) {
