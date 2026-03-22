@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
+import { emailFrom, emailReplyTo, DANIELA_EMAIL } from "@/lib/email-config";
 
 let resend: Resend | null = null;
 if (process.env.RESEND_API_KEY) {
@@ -251,8 +252,8 @@ export async function POST(request: Request) {
 
     // Send internal notification to Daniela (existing behavior, all types)
     const { error } = await resend.emails.send({
-      from: "CYB Chestionar <onboarding@resend.dev>",
-      to: "cioclov.ovidiu@gmail.com",
+      from: emailFrom("CYB Chestionar"),
+      to: DANIELA_EMAIL,
       subject,
       html,
     });
@@ -273,7 +274,8 @@ export async function POST(request: Request) {
       if (userEmail && userEmail.includes("@")) {
         try {
           const { error: userErr } = await resend.emails.send({
-            from: "Change Your Body <onboarding@resend.dev>",
+            from: emailFrom("Change Your Body"),
+            replyTo: emailReplyTo,
             to: userEmail,
             subject: "Profilul tău Change Your Body este gata",
             html: buildCompletFollowUpHtml(complet.profile),

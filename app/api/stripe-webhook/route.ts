@@ -7,6 +7,7 @@ import {
   escapeHtml,
   type CustomerProfile,
 } from "@/lib/metabolic-report";
+import { emailFrom, emailReplyTo, DANIELA_EMAIL } from "@/lib/email-config";
 
 // ── Stripe init (safe: null if env missing) ─────────────────────────
 let stripe: Stripe | null = null;
@@ -425,7 +426,8 @@ async function triggerFulfillment(
   if (resend && payload.customerEmail) {
     try {
       const { error } = await resend.emails.send({
-        from: "Change Your Body <onboarding@resend.dev>",
+        from: emailFrom("Change Your Body"),
+        replyTo: emailReplyTo,
         to: payload.customerEmail,
         subject: `Confirmare comandă — ${payload.packageName}`,
         html: buildCustomerConfirmationHtml(payload),
@@ -451,8 +453,8 @@ async function triggerFulfillment(
   if (resend) {
     try {
       const { error } = await resend.emails.send({
-        from: "CYB System <onboarding@resend.dev>",
-        to: "cioclov.ovidiu@gmail.com",
+        from: emailFrom("CYB System"),
+        to: DANIELA_EMAIL,
         subject: `💰 Plată nouă: ${payload.packageName} — ${payload.customerName || "Client"}`,
         html: buildInternalNotificationHtml(payload),
       });
@@ -487,7 +489,8 @@ async function triggerFulfillment(
         reportUrl,
       });
       const { error } = await resend.emails.send({
-        from: "Change Your Body <onboarding@resend.dev>",
+        from: emailFrom("Change Your Body"),
+        replyTo: emailReplyTo,
         to: payload.customerEmail,
         subject: `Raportul tău metabolic personalizat — Change Your Body`,
         html: reportHtml,
