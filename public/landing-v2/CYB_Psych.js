@@ -691,8 +691,9 @@ function buildPersonalLetterContext(profile, signals, routeData, scores, metabol
   var highHormonal = scores.hormonal > 60;
   var beginner = (answers.q13 || 0) <= 1;
   var lowTime = (answers.q8 || 0) <= 1;
-  var highMotiv = (answers.q21 || 5) >= 8;
-  var lowMotiv = (answers.q21 || 5) <= 4;
+  // D4: q21 is now 0-3 single-select (0=curious, 1=motivated, 2=very motivated, 3=all-in)
+  var highMotiv = (answers.q21 != null ? answers.q21 : 1) >= 2;
+  var lowMotiv = (answers.q21 != null ? answers.q21 : 1) === 0;
 
   return {
     profile: profile,
@@ -1704,12 +1705,12 @@ function _generateSyntheticProfiles() {
     // Base answers — moderate stress, moderate activity
     var A = {
       q5: 1, q6: 1, q8: 2, q9: [0,1], q10: [0], q12: [0,1], q13: 2,
-      q14: 2, q15: 1, q16: 2, q17: 1, q18: [0], q19: 2, q20: [0], q21: 7
+      q14: 2, q15: 1, q16: 2, q17: 1, q18: [0], q19: 2, q20: [0], q21: 1
     };
 
-    // Route-specific answer adjustments
-    if (route === 'BURNOUT') { A.q5 = 3; A.q6 = 3; A.q8 = 1; A.q21 = 5; }
-    if (route === 'LOSS') { A.q5 = 2; A.q21 = 4; A.q15 = 0; }
+    // Route-specific answer adjustments (D4: q21 now 0-3)
+    if (route === 'BURNOUT') { A.q5 = 3; A.q6 = 3; A.q8 = 1; A.q21 = 0; }
+    if (route === 'LOSS') { A.q5 = 2; A.q21 = 0; A.q15 = 0; }
     if (route === 'POSTPARTUM') { A.q5 = 3; A.q8 = 1; }
     if (route === 'HORMONAL') { A.q14 = 3; }
 
@@ -1901,7 +1902,7 @@ function _buildEdgeCaseMatrix() {
   function _mkCtx(route, profileOverrides, answerOverrides, signalHints) {
     var P = { sex:'F', age:32, height:165, weight:72, targetWeight:62, activity:2, moment:MOM[route] || 5 };
     for (var pk in (profileOverrides || {})) { if (profileOverrides.hasOwnProperty(pk)) P[pk] = profileOverrides[pk]; }
-    var A = { q5:1, q6:1, q8:2, q9:[0,1], q10:[0], q12:[0,1], q13:2, q14:2, q15:1, q16:2, q17:1, q18:[0], q19:2, q20:[0], q21:7 };
+    var A = { q5:1, q6:1, q8:2, q9:[0,1], q10:[0], q12:[0,1], q13:2, q14:2, q15:1, q16:2, q17:1, q18:[0], q19:2, q20:[0], q21:1 };
     for (var ak in (answerOverrides || {})) { if (answerOverrides.hasOwnProperty(ak)) A[ak] = answerOverrides[ak]; }
     var sig = (typeof interpretSignals === 'function') ? interpretSignals(P, A) : (signalHints || {});
     var rd = (typeof resolveRoute === 'function') ? resolveRoute(P, sig) : { route: route };
@@ -1944,7 +1945,7 @@ function _buildEdgeCaseMatrix() {
         scores: { stress:30, hormonal:20 },
         metabolicProfile: null,
         safetyTags: [],
-        answers: { q5:1, q6:1, q8:2, q9:[0], q10:[0], q12:[0], q13:2, q14:1, q15:1, q16:2, q17:0, q18:[0], q19:2, q20:[0], q21:7 },
+        answers: { q5:1, q6:1, q8:2, q9:[0], q10:[0], q12:[0], q13:2, q14:1, q15:1, q16:2, q17:0, q18:[0], q19:2, q20:[0], q21:1 },
         completion: {},
         tone: { vulnerability:'direct', pace:'structured', motivation:'coaching', label:'direct-structured-coaching' },
         derived: { hasLimitations:false, hasMedical:false, isEmotionalEater:false, manyDiets:false, lowWater:false, poorSleep:false, highStress:false, modStress:false, highHormonal:false, beginner:false, lowTime:false, highMotiv:false, lowMotiv:false }
@@ -1952,11 +1953,11 @@ function _buildEdgeCaseMatrix() {
     })(), expectsLetter: true, notes: ['minimal viable — all defaults, GENERAL route'] },
 
     // EC6: high stress + high readiness conflict
-    { id: 'ec_stress_readiness', ctx: _mkCtx('GENERAL', {}, { q5:3, q6:3, q21:10, q13:3, q8:3 }),
+    { id: 'ec_stress_readiness', ctx: _mkCtx('GENERAL', {}, { q5:3, q6:3, q21:3, q13:3, q8:3 }),
       expectsLetter: true, notes: ['stress caps push despite high readiness'] },
 
     // EC7: high shame + high motivation conflict
-    { id: 'ec_shame_motiv', ctx: _mkCtx('GENERAL', {}, { q15:0, q17:4, q21:10, q13:3 }),
+    { id: 'ec_shame_motiv', ctx: _mkCtx('GENERAL', {}, { q15:0, q17:4, q21:3, q13:3 }),
       expectsLetter: true, notes: ['shame reduces push despite high motivation'] },
 
     // EC8: hormonal high + energy low
@@ -1964,19 +1965,19 @@ function _buildEdgeCaseMatrix() {
       expectsLetter: true, notes: ['hormonal route + exhaustion signals'] },
 
     // EC9: protective route (LOSS) + high momentum answers
-    { id: 'ec_loss_momentum', ctx: _mkCtx('LOSS', { loss:true }, { q21:10, q13:3, q8:3 }),
+    { id: 'ec_loss_momentum', ctx: _mkCtx('LOSS', { loss:true }, { q21:3, q13:3, q8:3 }),
       expectsLetter: true, notes: ['LOSS route overrides momentum — softness floor'] },
 
     // EC10: POSTPARTUM + overwhelmed + high shame
-    { id: 'ec_pp_overwhelm_shame', ctx: _mkCtx('POSTPARTUM', { postpartum:true }, { q5:3, q6:3, q8:0, q15:0, q17:4, q21:3 }),
+    { id: 'ec_pp_overwhelm_shame', ctx: _mkCtx('POSTPARTUM', { postpartum:true }, { q5:3, q6:3, q8:0, q15:0, q17:4, q21:0 }),
       expectsLetter: true, notes: ['triple protective signal stack'] },
 
     // EC11: all zeros answers (extreme low)
-    { id: 'ec_all_zeros', ctx: _mkCtx('GENERAL', {}, { q5:0, q6:0, q8:0, q13:0, q14:0, q15:2, q16:0, q17:0, q19:0, q21:1 }),
+    { id: 'ec_all_zeros', ctx: _mkCtx('GENERAL', {}, { q5:0, q6:0, q8:0, q13:0, q14:0, q15:2, q16:0, q17:0, q19:0, q21:0 }),
       expectsLetter: true, notes: ['minimal engagement — low everything'] },
 
     // EC12: all max answers (extreme high)
-    { id: 'ec_all_max', ctx: _mkCtx('GENERAL', {}, { q5:3, q6:3, q8:3, q13:3, q14:3, q15:0, q16:3, q17:4, q19:3, q21:10 }),
+    { id: 'ec_all_max', ctx: _mkCtx('GENERAL', {}, { q5:3, q6:3, q8:3, q13:3, q14:3, q15:0, q16:3, q17:4, q19:3, q21:3 }),
       expectsLetter: true, notes: ['max all signals — conflict resolution stress test'] },
 
     // EC13: missing derived (force recalc path)
@@ -1994,7 +1995,7 @@ function _buildEdgeCaseMatrix() {
     })(), expectsLetter: false, notes: ['null tone — policy blocks as insufficient_data'] },
 
     // EC15: BURNOUT + max stress + low motivation
-    { id: 'ec_burnout_extreme', ctx: _mkCtx('BURNOUT', {}, { q5:3, q6:3, q8:0, q21:2, q13:0, q15:0, q17:4 }),
+    { id: 'ec_burnout_extreme', ctx: _mkCtx('BURNOUT', {}, { q5:3, q6:3, q8:0, q21:0, q13:0, q15:0, q17:4 }),
       expectsLetter: true, notes: ['extreme burnout — max protection expected'] }
   ];
 }

@@ -27,9 +27,10 @@ function interpretSignals(mini, ans) {
   else if (limCount>=1||diets>=2||emoEat<=1) signals.shameRisk='medium';
   else signals.shameRisk='low';
   // structureNeed
-  const meals=ans.q14, irregMeals=(meals===3), lowM=(motiv!==undefined&&motiv<=4), hiM=(motiv!==undefined&&motiv>=8);
+  // D4: q21 now 0-3 (0=curious, 1=motivated, 2=very motivated, 3=all-in); q14 has 5 opts (4=fără ritm)
+  const meals=ans.q14, irregMeals=(meals===4), lowM=(motiv!==undefined&&motiv===0), hiM=(motiv!==undefined&&motiv>=2);
   if (exp<=1||irregMeals||lowM) signals.structureNeed='high';
-  else if (exp===2||(motiv>=5&&motiv<=7)) signals.structureNeed='medium';
+  else if (exp===2||motiv===1) signals.structureNeed='medium';
   else if (exp>=3&&hiM) signals.structureNeed='low';
   else signals.structureNeed='medium';
   // pressureTolerance

@@ -66,11 +66,9 @@ var STEPS_COMPLET = [
   // BLOC 1: DESPRE TINE
   {id:'q1', block:'Despre Tine', blockColor:'teal', type:'single',
     ...COPY.q('q1'),
-    opts:['Sub 55 kg','55–60 kg','60–65 kg','65–70 kg','70–75 kg','Peste 75 kg','Nu am un număr — vreau doar să mă simt bine']},
+    opts:['Sub 60 kg','60–70 kg','70–80 kg','Peste 80 kg','Nu am o cifră — vreau să mă simt bine în corpul meu']},
 
-  {id:'q2', block:'Despre Tine', blockColor:'teal', type:'single',
-    ...COPY.q('q2'),
-    opts:['Măr (grăsime pe abdomen)','Pară (grăsime pe șolduri/coapse)','Clepsidră (distribuție egală)','Dreptunghi (fără curbe pronunțate)','Nu știu sigur']},
+  // q2 removed (D4: body shape — low signal, uncomfortable)
 
   {id:'q3', block:'Despre Tine', blockColor:'teal', type:'single',
     ...COPY.q('q3'),
@@ -98,9 +96,7 @@ var STEPS_COMPLET = [
     ...COPY.q('q6'),
     opts:['Scăzut — viața e ok','Moderat — stres normal','Ridicat — mă simt copleșită frecvent','Foarte ridicat — mă afectează fizic']},
 
-  {id:'q7', block:'Stilul Tău de Viață', blockColor:'gold', type:'single',
-    ...COPY.q('q7'),
-    opts:['Remote / freelancer','Birou 8+ ore','În picioare / mișcare (vânzătoare, asistentă)','Mamă cu program complet acasă','Lucrez ture','Program mixt']},
+  // q7 removed (D4: daily routine — redundant with activity from MINI)
 
   {id:'q8', block:'Stilul Tău de Viață', blockColor:'gold', type:'single',
     ...COPY.q('q8'),
@@ -112,8 +108,7 @@ var STEPS_COMPLET = [
 
   {id:'q9b', block:'Stilul Tău de Viață', blockColor:'gold', type:'scale',
     ...COPY.q('q9b'),
-    min:0, max:5, minL:'0 căni', maxL:'5+ căni',
-    showIf:{field:'profile.moment',values:[3]}},
+    min:0, max:5, minL:'0 căni', maxL:'5+ căni'},
 
   // === BLOCK TRANSITION: SĂNĂTATE ===
   {id:'trans_3', type:'transition', block:'Sănătate & Limitări', blockColor:'rose',
@@ -125,7 +120,7 @@ var STEPS_COMPLET = [
     opts:['Nu am nicio condiție','Diabet tip 2 / Rezistență la insulină','Hipotiroidism (Hashimoto)','PCOS','Hipertensiune','Probleme cardiace','Depresie / Anxietate (diagnosticată)']},
 
   {id:'q11', block:'Sănătate & Limitări', blockColor:'rose', type:'textarea',
-    ...COPY.q('q11')},
+    ...COPY.q('q11'), optional:true},
 
   {id:'q12', block:'Sănătate & Limitări', blockColor:'rose', type:'multi',
     ...COPY.q('q12'),
@@ -135,10 +130,18 @@ var STEPS_COMPLET = [
     ...COPY.q('q13'),
     opts:['Începător total','Începător — am făcut puțin','Intermediar — sport ocazional','Avansat — sport regulat']},
 
+  {id:'qCycle', block:'Sănătate & Limitări', blockColor:'rose', type:'single',
+    ...COPY.q('qCycle'),
+    opts:['Regulat (25–35 zile)','Neregulat','Nu mai am ciclu (menopauză / chirurgical)','Sunt însărcinată','Nu doresc să răspund']},
+
   {id:'q13b', block:'Sănătate & Limitări', blockColor:'rose', type:'multi',
     ...COPY.q('q13b'),
     opts:['Bufeuri / valuri de căldură','Insomnie / treziri nocturne','Iritabilitate crescută','Greutate abdominală nouă','Libido scăzut','Transpirații nocturne','Uscăciune piele/păr','Niciuna din acestea'],
-    showIf:{field:'profile.moment',values:[2]}},
+    showIf:function(profile, ans) {
+      if (profile.moment === 2) return true;
+      var cycle = ans['qCycle'];
+      return cycle === 1 || cycle === 2;
+    }},
 
   // === BLOCK TRANSITION: ALIMENTAȚIE ===
   {id:'trans_4', type:'transition', block:'Alimentația Ta', blockColor:'purple',
@@ -147,11 +150,19 @@ var STEPS_COMPLET = [
   // BLOC 4: ALIMENTAȚIE
   {id:'q14', block:'Alimentația Ta', blockColor:'purple', type:'single',
     ...COPY.q('q14'),
-    opts:['1-2 mese (sar peste mese)','3 mese principale','3 mese + 1-2 gustări','Mănânc când apuc, fără ritm']},
+    opts:['1–2 mese (sar des peste mese)','3 mese principale fără gustări','3 mese + 1–2 gustări','4–5 mese mici pe parcursul zilei','Fără program fix — mănânc când apuc']},
+
+  {id:'qBreakfast', block:'Alimentația Ta', blockColor:'purple', type:'single',
+    ...COPY.q('qBreakfast'),
+    opts:['Nu iau micul dejun','Cafea + ceva mic (biscuit, fruct)','Mic dejun complet (ouă, pâine, etc.)','Variază mult — depinde de zi']},
 
   {id:'q15', block:'Alimentația Ta', blockColor:'purple', type:'single',
     ...COPY.q('q15'),
     opts:['Da, des — e o problemă reală','Uneori, când sunt stresată','Rar / Nu']},
+
+  {id:'qLateEating', block:'Alimentația Ta', blockColor:'purple', type:'single',
+    ...COPY.q('qLateEating'),
+    opts:['Da, aproape zilnic','Câteodată (2–3 ori pe săptămână)','Rar','Nu, nu mănânc seara târziu']},
 
   {id:'q16', block:'Alimentația Ta', blockColor:'purple', type:'single',
     ...COPY.q('q16'),
@@ -189,9 +200,9 @@ var STEPS_COMPLET = [
     ...COPY.q('q20'),
     opts:['Lipsa de timp','Lipsa de motivație','Nu știu ce să mănânc','Poftele / mâncatul emoțional','Lipsa de suport','Stresul','Nu văd rezultate destul de repede','Costurile mâncării sănătoase']},
 
-  {id:'q21', block:'Motivație', blockColor:'coral', type:'scale',
+  {id:'q21', block:'Motivație', blockColor:'coral', type:'single',
     ...COPY.q('q21'),
-    min:1, max:10, minL:'Curioasă', maxL:'Extrem de motivată'},
+    opts:['Sunt curioasă — vreau să văd ce primesc','Sunt motivată — vreau să încep','Sunt foarte motivată — sunt pregătită acum','Sunt ALL-IN — nu mai amân']},
 
   // === COMPLET RESULTS ===
   {id:'complet_results', type:'complet_results'},
@@ -212,6 +223,8 @@ function buildVisible(profile, ans) {
   ans = ans || {};
   return STEPS_COMPLET.filter(function(q) {
     if (!q.showIf) return true;
+    // D4: support function-based showIf (e.g. q13b multi-field logic)
+    if (typeof q.showIf === 'function') return q.showIf(profile, ans);
     var field = q.showIf.field;
     if (field === 'profile.moment') return q.showIf.values.includes(profile.moment);
     var v = ans[field];

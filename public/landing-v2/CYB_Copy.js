@@ -166,13 +166,13 @@ const COPY = {
     // ── COMPLET QUESTIONS ────────────────────────────────────────────
     questions: {
       q1:   { title:'Care este greutatea ta dorită?', sub:'Greutatea la care te-ai simți bine — nu „perfectă", ci confortabilă.' },
-      q2:   { title:'Cum ai descrie forma corpului tău?', sub:'Nu există răspuns greșit — e doar pentru personalizare.' },
+      // q2 removed (D4)
       q3:   { title:'Cum ți s-a schimbat greutatea în ultimul an?', sub:null },
       q4:   { title:'Ai copii?', sub:null },
       q4b:  { title:'Alăptezi în prezent?', sub:'Important pentru planul alimentar.' },
       q5:   { title:'Cum dormi?', sub:'Somnul afectează direct hormonii și greutatea.' },
       q6:   { title:'Nivelul tău de stres zilnic?', sub:null },
-      q7:   { title:'Cum arată o zi obișnuită?', sub:null },
+      // q7 removed (D4)
       q8:   { title:'Cât timp ai pe zi pentru antrenament?', sub:null },
       q9:   { title:'Ce ai disponibil pentru antrenament?', sub:'Bifează tot ce ai — inclusiv obiecte din casă!' },
       q9b:  { title:'Câtă cafea bei pe zi?', sub:'Cofeina afectează cortizolul și somnul.' },
@@ -180,9 +180,12 @@ const COPY = {
       q11:  { title:'Medicamente / detalii suplimentare', sub:'Ce medicamente iei? Dacă nu iei nimic, scrie „Nu iau medicamente."' },
       q12:  { title:'Ai limitări fizice sau dureri?', sub:'Foarte important! Adaptăm fiecare exercițiu.', note:'Nu ești singură — peste 40% dintre femeile 35+ au cel puțin o limitare fizică.' },
       q13:  { title:'Nivelul tău de experiență cu sportul?', sub:null },
+      qCycle: { title:'Cum este ciclul tău menstrual?', sub:'Ne ajută să adaptăm planul la nevoile hormonale reale.' },
       q13b: { title:'Ce simptome hormonale ai observat?', sub:'Bifează tot ce se aplică. Ne ajută să adaptăm planul.' },
       q14:  { title:'Câte mese mănânci pe zi?', sub:null },
+      qBreakfast: { title:'Ce mănânci de obicei la micul dejun?', sub:'Micul dejun influențează energia și poftele din restul zilei.' },
       q15:  { title:'Mănânci emoțional?', sub:'Stres, tristețe, plictiseală — nu e slăbiciune, e răspuns hormonal.', note:'Mâncatul emoțional NU este o slăbiciune de voință. Este un răspuns al cortizolului la stres.' },
+      qLateEating: { title:'Mănânci des după ora 21:00?', sub:'Mâncatul târziu poate afecta somnul și digestia.' },
       q16:  { title:'Câtă apă bei pe zi?', sub:null },
       q17:  { title:'Ai mai ținut diete înainte?', sub:null },
       q18:  { title:'Ce preferi să mănânci?', sub:'Bifează stilurile care ți se potrivesc.' },
@@ -191,7 +194,7 @@ const COPY = {
       q19c: { title:'Cât timp ai pentru gătit per masă?', sub:'Ne ajută să alegem rețete potrivite ritmului tău.' },
       q19d: { title:'Sunt alimente pe care le refuzi complet?', sub:'Opțional — scrie ce nu mănânci sub nicio formă.' },
       q20:  { title:'Care este cel mai mare obstacol?', sub:'Poți bifa mai multe.' },
-      q21:  { title:'Cât de motivată ești ACUM?', sub:null },
+      q21:  { title:'Cât de motivată ești ACUM?', sub:'Fii sinceră — nu există răspuns greșit.' },
     },
 
     // ── COMPLET TRANSITIONS ─────────────────────────────────────────
@@ -230,7 +233,7 @@ const COPY = {
         paramLabels: { time:'Timp/antrenament:', experience:'Experiență:', meals:'Mese/zi:', budget:'Buget alimentar:', motivation:'Motivație:', equipment:'Echipament:', allergies:'Alergii:', cookTime:'Timp gătit:' },
         timeOptions: ['<15 min','15-20 min','20-30 min','30-45 min','45+ min'],
         expOptions: ['Începător','Începător+','Intermediar','Avansat'],
-        mealOptions: ['1-2','3','3+gustări','Fără ritm'],
+        mealOptions: ['1–2','3','3+gustări','4–5 mici','Fără ritm'],
         budgetOptions: ['<150 RON','150-250','250-400','400+'],
         allergyOptions: ['Lactoză','Gluten','Nuci','Ouă','Pește','Soia','Fără'],
         cookTimeOptions: ['<15 min','15-30 min','30-45 min','45+ min','Fără gătit'],
