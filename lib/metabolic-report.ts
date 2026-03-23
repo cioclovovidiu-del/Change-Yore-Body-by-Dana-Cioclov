@@ -1,7 +1,11 @@
 // =============================================================================
 // C6/C7: Shared metabolic report — used by webhook (email) + /report (browser)
-// Exact same formulas as public/landing-v2/CYB_Calc.js
+// Core math imported from lib/cyb-calc.ts (canonical source).
 // =============================================================================
+
+import { calcBMI, calcBMR, calcTDEE } from "./cyb-calc";
+
+export { calcBMI, calcBMR, calcTDEE };
 
 export interface CustomerProfile {
   age: number;
@@ -57,20 +61,7 @@ export function extractCompletAnswers(
   }
 }
 
-// ── Pure math (CYB_Calc.js replicated) ──────────────────────────────
-export function calcBMI(w: number, h: number): number {
-  return w / ((h / 100) ** 2);
-}
-
-export function calcBMR(w: number, h: number, a: number): number {
-  return 10 * w + 6.25 * h - 5 * a - 161;
-}
-
-export function calcTDEE(bmr: number, act: number): number {
-  const factors = [1.2, 1.375, 1.55, 1.725];
-  const idx = Math.min(Math.max(Math.floor(act), 0), 3);
-  return bmr * factors[idx];
-}
+// ── calcBMI, calcBMR, calcTDEE: imported + re-exported from lib/cyb-calc.ts ─
 
 export function idealWeightRange(h: number): { low: number; high: number } {
   return {
