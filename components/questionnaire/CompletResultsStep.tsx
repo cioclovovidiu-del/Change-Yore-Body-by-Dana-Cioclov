@@ -133,7 +133,8 @@ export function CompletResultsStep({
       .then((r) => r.json())
       .then((data) => {
         if (data && data.url) {
-          window.location.href = data.url;
+          // Break out of iframe if embedded (matches legacy cybCheckout behavior)
+          try { window.top!.location.href = data.url; } catch { window.location.href = data.url; }
         } else {
           console.error("Checkout response missing url", data);
           setCheckoutLoading(null);
