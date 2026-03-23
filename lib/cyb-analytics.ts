@@ -26,6 +26,27 @@ function _fbq(...args: any[]): void {
   } catch { /* swallow */ }
 }
 
+// ── Navigation events ───────────────────────────────────────────────────
+
+export function trackQuestionnaireStart(): void {
+  _gtag("event", "questionnaire_start", { event_category: "funnel" });
+  _fbq("trackCustom", "QuestionnaireStart");
+}
+
+export function trackEmailProvided(): void {
+  _gtag("event", "email_provided", { event_category: "funnel", has_email: true });
+  _fbq("trackCustom", "EmailProvided", { has_email: true });
+}
+
+export function trackMiniStep(stepId: string, stepIndex: number): void {
+  _gtag("event", "mini_step", { event_category: "funnel", step_id: stepId, step_index: stepIndex });
+  _fbq("trackCustom", "MiniStep", { step_id: stepId, step_index: stepIndex });
+}
+
+export function trackCompletStart(route: string): void {
+  _gtag("event", "complet_start", { event_category: "funnel", route });
+}
+
 // ── Results events ──────────────────────────────────────────────────────
 
 export function trackMiniComplete(route: string, bmi: string): void {

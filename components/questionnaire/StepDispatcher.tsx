@@ -81,7 +81,7 @@ export function StepDispatcher(props: StepDispatcherProps) {
     return <MiniResultsStep profile={profile} hasSavedProgress={hasSavedProgress} onStartComplet={onStartComplet} onReset={onReset} tracked={!!state._miniResultsTracked} onMarkTracked={() => onMarkFlag("_miniResultsTracked")} />;
   }
   if (t === "complet_results") {
-    return <CompletResultsStep profile={profile} ans={ans} hasSavedProgress={hasSavedProgress} onReset={onReset} tracked={!!state._completResultsTracked} onMarkTracked={() => onMarkFlag("_completResultsTracked")} />;
+    return <CompletResultsStep profile={profile} ans={ans} hasSavedProgress={hasSavedProgress} onReset={onReset} tracked={!!state._completResultsTracked} onMarkTracked={() => onMarkFlag("_completResultsTracked")} completEmailSent={!!state._completEmailSent} onMarkCompletEmailSent={() => onMarkFlag("_completEmailSent")} />;
   }
 
   // ── Unsupported step types — generic fallback ───────────────────────

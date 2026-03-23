@@ -6,13 +6,70 @@
 // Route: /dev/questionnaire-runtime
 // =============================================================================
 
+import { useCallback } from "react";
 import { useQuestionnaireRuntime } from "@/hooks/useQuestionnaireRuntime";
 import { StepDispatcher } from "@/components/questionnaire/StepDispatcher";
 import { COPY } from "@/lib/cyb-copy";
-import { canAdvanceStep } from "@/lib/cyb-questionnaire-state";
+import { canAdvanceStep, getActiveSteps } from "@/lib/cyb-questionnaire-state";
+import {
+  trackQuestionnaireStart,
+  trackEmailProvided,
+  trackMiniStep,
+  trackCompletStart,
+} from "@/lib/cyb-analytics";
 
 export default function QuestionnaireRuntimeDevPage() {
   const rt = useQuestionnaireRuntime();
+
+  // ── Navigation analytics wrapper (mirrors legacy goNext analytics) ──
+  const handleGoNext = useCallback(() => {
+    const s = rt.currentStep;
+    const state = rt.state;
+
+    // Fire before advancing (matches legacy: analytics fires before step++)
+    if (s.type === "welcome" && !state._questionnaireStartTracked) {
+      trackQuestionnaireStart();
+      rt.markFlag("_questionnaireStartTracked");
+    }
+    if (s.type === "gdpr_email" && state.profile.email?.includes("@") && !state._emailProvidedTracked) {
+      trackEmailProvided();
+      rt.markFlag("_emailProvidedTracked");
+    }
+
+    const advanced = rt.goNext();
+
+    // Fire after advancing (matches legacy: mini_step fires on the NEW step)
+    if (advanced && state.phase === "MINI") {
+      const newSteps = getActiveSteps({ ...state, step: state.step + 1 });
+      const newStep = newSteps[state.step + 1];
+      if (newStep) {
+        trackMiniStep(newStep.id, state.step + 1);
+      }
+    }
+
+    return advanced;
+  }, [rt]);
+
+  // ── startComplet wrapper (mirrors legacy startComplet analytics + email) ──
+  const handleStartComplet = useCallback(() => {
+    const state = rt.state;
+    const route = COPY.route.get(state.profile.moment ?? 5);
+    trackCompletStart(route);
+
+    // Mini email send (matches legacy: fires once when gdpr + !_miniEmailSent)
+    if (state.profile.gdpr && !state._miniEmailSent) {
+      rt.markFlag("_miniEmailSent");
+      try {
+        fetch("/api/send-email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ type: "mini", profile: state.profile }),
+        }).catch(() => {});
+      } catch { /* swallow */ }
+    }
+
+    rt.startComplet();
+  }, [rt]);
 
   if (!rt.hydrated) {
     return (
@@ -65,7 +122,7 @@ export default function QuestionnaireRuntimeDevPage() {
           onProfileChange={rt.setProfileValue}
           onAnswerChange={rt.setAnswerValue}
           onToggleMulti={rt.toggleMulti}
-          onStartComplet={rt.startComplet}
+          onStartComplet={handleStartComplet}
           onMarkFlag={rt.markFlag}
           onReset={rt.reset}
         />
@@ -84,7 +141,7 @@ export default function QuestionnaireRuntimeDevPage() {
             ← Înapoi
           </button>
           <button
-            onClick={() => rt.goNext()}
+            onClick={() => handleGoNext()}
             disabled={!canAdvanceStep(s, rt.state)}
             style={{
               ...(s.type === "gdpr_email" ? btnGoldStyle : btnNextStyle),

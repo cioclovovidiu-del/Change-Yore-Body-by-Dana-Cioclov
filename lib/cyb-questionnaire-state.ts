@@ -25,7 +25,12 @@ export interface QuestionnaireState {
   _completEmailSent?: boolean;
   _miniResultsTracked?: boolean;
   _completResultsTracked?: boolean;
+  _questionnaireStartTracked?: boolean;
+  _emailProvidedTracked?: boolean;
 }
+// Note: _questionnaireStartTracked and _emailProvidedTracked are used by
+// the dev runtime page for navigation analytics dedup. They are persisted
+// via the generic markFlag() mechanism and survive across rerenders.
 
 export interface QuestionnaireProgress {
   /** Progress bar percentage (0-100) */
@@ -271,6 +276,8 @@ export function validatePersistedState(
   if (s._completEmailSent) state._completEmailSent = true;
   if (s._miniResultsTracked) state._miniResultsTracked = true;
   if (s._completResultsTracked) state._completResultsTracked = true;
+  if (s._questionnaireStartTracked) state._questionnaireStartTracked = true;
+  if (s._emailProvidedTracked) state._emailProvidedTracked = true;
 
   // Clamp step to valid range
   const steps = getActiveSteps(state);

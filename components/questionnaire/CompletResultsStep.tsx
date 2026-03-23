@@ -73,6 +73,8 @@ export function CompletResultsStep({
   onReset,
   tracked,
   onMarkTracked,
+  completEmailSent,
+  onMarkCompletEmailSent,
 }: {
   profile: Record<string, any>;
   ans: Record<string, any>;
@@ -80,9 +82,25 @@ export function CompletResultsStep({
   onReset: () => void;
   tracked?: boolean;
   onMarkTracked?: () => void;
+  completEmailSent?: boolean;
+  onMarkCompletEmailSent?: () => void;
 }) {
   const P = profile;
   const A = ans;
+
+  // ── Complet completion email (matches legacy renderCompletResults) ──
+  useEffect(() => {
+    if (completEmailSent) return;
+    if (!P.gdpr) return;
+    onMarkCompletEmailSent?.();
+    try {
+      fetch("/api/send-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "complet", profile: P, ans: A }),
+      }).catch(() => {});
+    } catch { /* swallow */ }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Checkout state ──────────────────────────────────────────────────
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
