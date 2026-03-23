@@ -1,387 +1,201 @@
 "use client";
 // =============================================================================
 // DEV-ONLY: Questionnaire Runtime Shell
-// Hidden route for verifying the extracted state machine + hook in React.
+// Hidden route for verifying the extracted state machine + hook + components.
 // NOT the final questionnaire UI. NOT linked from production pages.
 // Route: /dev/questionnaire-runtime
 // =============================================================================
 
 import { useQuestionnaireRuntime } from "@/hooks/useQuestionnaireRuntime";
-import type { Step } from "@/lib/cyb-steps";
-
-// ── Generic step input control ──────────────────────────────────────────
-
-function StepInput({
-  step,
-  profileValue,
-  answerValue,
-  onProfileChange,
-  onAnswerChange,
-  onToggleMulti,
-}: {
-  step: Step;
-  profileValue: any;
-  answerValue: any;
-  onProfileChange: (key: string, val: any) => void;
-  onAnswerChange: (key: string, val: any) => void;
-  onToggleMulti: (id: string, val: number) => void;
-}) {
-  const t = step.type;
-
-  // Profile-driven types: text, number, measures, activity, cards, gdpr_email
-  if (t === "text") {
-    return (
-      <input
-        type="text"
-        placeholder={step.ph || step.id}
-        value={profileValue ?? ""}
-        onChange={(e) => onProfileChange(step.id, e.target.value)}
-        style={inputStyle}
-      />
-    );
-  }
-
-  if (t === "number") {
-    return (
-      <input
-        type="number"
-        placeholder={step.ph || ""}
-        min={step.min}
-        max={step.max}
-        value={profileValue ?? ""}
-        onChange={(e) => {
-          const v = parseInt(e.target.value);
-          onProfileChange(step.id, isNaN(v) ? undefined : v);
-        }}
-        style={inputStyle}
-      />
-    );
-  }
-
-  if (t === "measures") {
-    return (
-      <div style={{ display: "flex", gap: 8 }}>
-        <input
-          type="number"
-          placeholder="Height (cm)"
-          value={profileValue?.height ?? ""}
-          onChange={(e) =>
-            onProfileChange("height", parseFloat(e.target.value) || undefined)
-          }
-          style={inputStyle}
-        />
-        <input
-          type="number"
-          placeholder="Weight (kg)"
-          value={profileValue?.weight ?? ""}
-          onChange={(e) =>
-            onProfileChange("weight", parseFloat(e.target.value) || undefined)
-          }
-          style={inputStyle}
-        />
-      </div>
-    );
-  }
-
-  if (t === "activity") {
-    return (
-      <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-        {[0, 1, 2, 3].map((i) => (
-          <button
-            key={i}
-            onClick={() => onProfileChange("activity", i)}
-            style={profileValue === i ? btnActiveStyle : btnStyle}
-          >
-            Activity {i}
-          </button>
-        ))}
-      </div>
-    );
-  }
-
-  if (t === "cards") {
-    const opts = step.opts || [];
-    return (
-      <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-        {opts.map((o: any, i: number) => {
-          const label = typeof o === "string" ? o : o.title || `Option ${i}`;
-          return (
-            <button
-              key={i}
-              onClick={() => onProfileChange(step.id, i)}
-              style={profileValue === i ? btnActiveStyle : btnStyle}
-            >
-              {label}
-            </button>
-          );
-        })}
-      </div>
-    );
-  }
-
-  if (t === "gdpr_email") {
-    return (
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        <input
-          type="email"
-          placeholder="email@example.ro"
-          value={profileValue?.email ?? ""}
-          onChange={(e) => onProfileChange("email", e.target.value)}
-          style={inputStyle}
-        />
-        <label style={{ fontSize: 12, color: "#aaa" }}>
-          <input
-            type="checkbox"
-            checked={!!profileValue?.gdpr}
-            onChange={(e) => onProfileChange("gdpr", e.target.checked)}
-          />{" "}
-          GDPR consent
-        </label>
-      </div>
-    );
-  }
-
-  // Answer-driven types: single, multi, scale, textarea
-  if (t === "single") {
-    const opts = (step.opts || []) as string[];
-    return (
-      <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-        {opts.map((o, i) => (
-          <button
-            key={i}
-            onClick={() => onAnswerChange(step.id, i)}
-            style={answerValue === i ? btnActiveStyle : btnStyle}
-          >
-            {o}
-          </button>
-        ))}
-      </div>
-    );
-  }
-
-  if (t === "multi") {
-    const opts = (step.opts || []) as string[];
-    const selected: number[] = Array.isArray(answerValue) ? answerValue : [];
-    return (
-      <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-        {opts.map((o, i) => (
-          <button
-            key={i}
-            onClick={() => onToggleMulti(step.id, i)}
-            style={selected.includes(i) ? btnActiveStyle : btnStyle}
-          >
-            {o}
-          </button>
-        ))}
-      </div>
-    );
-  }
-
-  if (t === "scale") {
-    const min = step.min ?? 0;
-    const max = step.max ?? 5;
-    const buttons = [];
-    for (let i = min; i <= max; i++) {
-      buttons.push(
-        <button
-          key={i}
-          onClick={() => onAnswerChange(step.id, i)}
-          style={answerValue === i ? btnActiveStyle : btnStyle}
-        >
-          {i}
-        </button>
-      );
-    }
-    return (
-      <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-        {buttons}
-      </div>
-    );
-  }
-
-  if (t === "textarea") {
-    return (
-      <textarea
-        placeholder={step.ph || "Scrie aici..."}
-        value={answerValue ?? ""}
-        onChange={(e) => onAnswerChange(step.id, e.target.value)}
-        style={{ ...inputStyle, minHeight: 60 }}
-      />
-    );
-  }
-
-  // Passthrough types: welcome, transition, mini_results, complet_results
-  if (t === "welcome" || t === "transition" || t === "mini_results" || t === "complet_results") {
-    return <div style={{ color: "#888", fontSize: 13 }}>[ {t} screen — press Next to continue ]</div>;
-  }
-
-  return <div style={{ color: "#666", fontSize: 12 }}>Unknown step type: {t}</div>;
-}
-
-// ── Page Component ──────────────────────────────────────────────────────
+import { StepDispatcher } from "@/components/questionnaire/StepDispatcher";
+import { COPY } from "@/lib/cyb-copy";
 
 export default function QuestionnaireRuntimeDevPage() {
   const rt = useQuestionnaireRuntime();
 
   if (!rt.hydrated) {
-    return <div style={pageStyle}><p style={{ color: "#888" }}>Hydrating...</p></div>;
+    return (
+      <div style={shellStyle}>
+        <p style={{ color: "rgba(255,255,255,0.4)" }}>Hydrating...</p>
+      </div>
+    );
   }
 
   const s = rt.currentStep;
-
-  // Determine the value source for the current step
-  const isProfileStep = ["text", "number", "measures", "activity", "cards", "gdpr_email"].includes(s.type);
-  const profileVal = s.type === "measures"
-    ? { height: rt.state.profile.height, weight: rt.state.profile.weight }
+  const btnLabel = s.type === "welcome"
+    ? COPY.ui.buttons.start
     : s.type === "gdpr_email"
-      ? { email: rt.state.profile.email, gdpr: rt.state.profile.gdpr }
-      : rt.state.profile[s.id];
-  const answerVal = rt.state.ans[s.id];
+      ? COPY.ui.buttons.seeResults
+      : COPY.ui.buttons.next;
 
   return (
-    <div style={pageStyle}>
-      <h1 style={{ fontSize: 16, color: "#3ECDC6", marginBottom: 16 }}>
-        DEV: Questionnaire Runtime Shell
-      </h1>
-
-      {/* ── State Dashboard ─────────────────────────────────────── */}
-      <table style={tableStyle}>
-        <tbody>
-          <tr><td style={tdLabel}>Phase</td><td style={tdVal}>{rt.state.phase}</td></tr>
-          <tr><td style={tdLabel}>Step</td><td style={tdVal}>{rt.state.step} / {rt.activeSteps.length - 1}</td></tr>
-          <tr><td style={tdLabel}>Step ID</td><td style={tdVal}>{s.id}</td></tr>
-          <tr><td style={tdLabel}>Step Type</td><td style={tdVal}>{s.type}</td></tr>
-          <tr><td style={tdLabel}>Block</td><td style={tdVal}>{s.block || "—"}</td></tr>
-          <tr><td style={tdLabel}>Progress</td><td style={tdVal}>{rt.progress.pct}%</td></tr>
-          <tr><td style={tdLabel}>Info</td><td style={tdVal}>{rt.progress.info || "—"}</td></tr>
-          <tr><td style={tdLabel}>Can Go Back</td><td style={tdVal}>{rt.progress.canGoBack ? "Yes" : "No"}</td></tr>
-          <tr><td style={tdLabel}>Is Results</td><td style={tdVal}>{rt.progress.isResults ? "Yes" : "No"}</td></tr>
-          <tr><td style={tdLabel}>Saved Progress</td><td style={tdVal}>{rt.hasSavedProgress ? "Yes" : "No"}</td></tr>
-          <tr><td style={tdLabel}>Active Steps</td><td style={tdVal}>{rt.activeSteps.length}</td></tr>
-        </tbody>
-      </table>
-
-      {/* ── Step Title ──────────────────────────────────────────── */}
-      {s.title && (
-        <div style={{ margin: "12px 0 4px", color: "#e0e0e0", fontSize: 14, fontWeight: 600 }}>
-          {s.title}
+    <div style={shellStyle}>
+      {/* ── Header ────────────────────────────────────────────────── */}
+      <div style={headerStyle}>
+        <div style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: "1.15rem", fontWeight: 700, color: "#3ECDC6" }}>
+          Change Your Body <span style={{ color: "#C9A84C", fontWeight: 400, fontStyle: "italic", fontSize: "0.75rem" }}>by Dana Cioclov</span>
         </div>
-      )}
-      {s.sub && (
-        <div style={{ marginBottom: 8, color: "#888", fontSize: 12 }}>
-          {s.sub}
+        <div style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.3)" }}>
+          {rt.progress.info || ""}
         </div>
-      )}
+      </div>
 
-      {/* ── Step Input ──────────────────────────────────────────── */}
-      <div style={{ margin: "8px 0 16px" }}>
-        <StepInput
-          step={s}
-          profileValue={profileVal}
-          answerValue={answerVal}
-          onProfileChange={rt.setProfileValue}
-          onAnswerChange={rt.setAnswerValue}
-          onToggleMulti={rt.toggleMulti}
+      {/* ── Progress bar ──────────────────────────────────────────── */}
+      <div style={{ height: 3, background: "rgba(255,255,255,0.05)", borderRadius: 2 }}>
+        <div
+          style={{
+            height: "100%",
+            background: "linear-gradient(90deg, #2AA5A0, #3ECDC6)",
+            borderRadius: 2,
+            width: `${rt.progress.pct}%`,
+            transition: "width 0.6s cubic-bezier(0.4, 0, 0.2, 1)",
+          }}
         />
       </div>
 
-      {/* ── Navigation Buttons ──────────────────────────────────── */}
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
-        <button onClick={() => rt.goBack()} disabled={!rt.progress.canGoBack} style={navBtnStyle}>
-          Back
-        </button>
-        <button onClick={() => rt.goNext()} style={{ ...navBtnStyle, background: "#2AA5A0", color: "#fff" }}>
-          Next
-        </button>
-        {rt.state.phase === "MINI" && s.type === "mini_results" && (
-          <button onClick={() => rt.startComplet()} style={{ ...navBtnStyle, background: "#C9A84C", color: "#fff" }}>
-            Start COMPLET
-          </button>
-        )}
-        <button onClick={() => rt.reset()} style={{ ...navBtnStyle, background: "#E07A6A", color: "#fff" }}>
-          Reset
-        </button>
+      {/* ── Step content ──────────────────────────────────────────── */}
+      <div style={{ flex: 1, display: "flex", alignItems: "flex-start", justifyContent: "center" }}>
+        <StepDispatcher
+          step={s}
+          profile={rt.state.profile}
+          ans={rt.state.ans}
+          hasSavedProgress={rt.hasSavedProgress}
+          onProfileChange={rt.setProfileValue}
+          onAnswerChange={rt.setAnswerValue}
+          onReset={rt.reset}
+        />
       </div>
 
-      {/* ── Raw State (collapsed) ───────────────────────────────── */}
-      <details style={{ marginTop: 8 }}>
-        <summary style={{ fontSize: 12, color: "#666", cursor: "pointer" }}>Raw State JSON</summary>
-        <pre style={{ fontSize: 11, color: "#aaa", whiteSpace: "pre-wrap", marginTop: 4, maxHeight: 300, overflow: "auto" }}>
-          {JSON.stringify(rt.state, null, 2)}
-        </pre>
+      {/* ── Navigation buttons ────────────────────────────────────── */}
+      {!rt.progress.isResults && (
+        <div style={btnRowStyle}>
+          <button
+            onClick={() => rt.goBack()}
+            style={{
+              ...btnBackStyle,
+              visibility: rt.progress.canGoBack ? "visible" : "hidden",
+            }}
+          >
+            ← Înapoi
+          </button>
+          <button
+            onClick={() => rt.goNext()}
+            style={s.type === "gdpr_email" ? btnGoldStyle : btnNextStyle}
+          >
+            {btnLabel}
+          </button>
+        </div>
+      )}
+
+      {/* ── Results actions (mini_results / complet_results) ──────── */}
+      {rt.progress.isResults && (
+        <div style={{ ...btnRowStyle, justifyContent: "center", gap: 12 }}>
+          {s.type === "mini_results" && (
+            <button onClick={() => rt.startComplet()} style={btnGoldStyle}>
+              Completează chestionarul detaliat →
+            </button>
+          )}
+          <button onClick={() => rt.reset()} style={{ ...btnBackStyle, visibility: "visible" }}>
+            {COPY.ui.resetButton}
+          </button>
+        </div>
+      )}
+
+      {/* ── Debug panel (collapsed) ───────────────────────────────── */}
+      <details style={{ padding: "8px 24px 16px", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+        <summary style={{ fontSize: 11, color: "rgba(255,255,255,0.25)", cursor: "pointer" }}>Debug</summary>
+        <table style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginTop: 6, borderCollapse: "collapse", width: "100%" }}>
+          <tbody>
+            <tr><td style={dbgL}>Phase</td><td>{rt.state.phase}</td></tr>
+            <tr><td style={dbgL}>Step</td><td>{rt.state.step} / {rt.activeSteps.length - 1}</td></tr>
+            <tr><td style={dbgL}>ID</td><td>{s.id}</td></tr>
+            <tr><td style={dbgL}>Type</td><td>{s.type}</td></tr>
+            <tr><td style={dbgL}>Block</td><td>{s.block || "—"}</td></tr>
+            <tr><td style={dbgL}>Pct</td><td>{rt.progress.pct}%</td></tr>
+            <tr><td style={dbgL}>Saved</td><td>{rt.hasSavedProgress ? "Y" : "N"}</td></tr>
+          </tbody>
+        </table>
+        <details style={{ marginTop: 4 }}>
+          <summary style={{ fontSize: 10, color: "rgba(255,255,255,0.2)", cursor: "pointer" }}>Raw JSON</summary>
+          <pre style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", whiteSpace: "pre-wrap", marginTop: 2, maxHeight: 200, overflow: "auto" }}>
+            {JSON.stringify(rt.state, null, 2)}
+          </pre>
+        </details>
       </details>
     </div>
   );
 }
 
-// ── Minimal inline styles ───────────────────────────────────────────────
+// ── Styles ──────────────────────────────────────────────────────────────
 
-const pageStyle: React.CSSProperties = {
-  maxWidth: 600,
+const shellStyle: React.CSSProperties = {
+  maxWidth: 520,
   margin: "0 auto",
-  padding: "24px 16px",
-  fontFamily: "system-ui, sans-serif",
-  background: "#0F1923",
-  color: "#e0e0e0",
+  width: "100%",
   minHeight: "100vh",
+  display: "flex",
+  flexDirection: "column",
+  fontFamily: "'Outfit', system-ui, sans-serif",
+  color: "rgba(255,255,255,0.55)",
+  background: "#0F1923",
 };
 
-const tableStyle: React.CSSProperties = {
-  width: "100%",
-  fontSize: 13,
-  borderCollapse: "collapse",
-  marginBottom: 12,
+const headerStyle: React.CSSProperties = {
+  padding: "14px 24px",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  borderBottom: "1px solid rgba(42,165,160,0.08)",
 };
 
-const tdLabel: React.CSSProperties = {
-  padding: "3px 8px 3px 0",
-  color: "#888",
-  whiteSpace: "nowrap",
-  verticalAlign: "top",
+const btnRowStyle: React.CSSProperties = {
+  position: "fixed",
+  bottom: 0,
+  left: 0,
+  right: 0,
+  padding: "12px 24px",
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  background: "rgba(15,25,35,0.95)",
+  backdropFilter: "blur(20px)",
+  borderTop: "1px solid rgba(42,165,160,0.06)",
+  zIndex: 100,
 };
 
-const tdVal: React.CSSProperties = {
-  padding: "3px 0",
-  color: "#e0e0e0",
-  fontFamily: "monospace",
-  fontSize: 12,
-};
-
-const inputStyle: React.CSSProperties = {
-  padding: "8px 10px",
-  borderRadius: 6,
-  border: "1px solid #333",
-  background: "#1A2733",
-  color: "#e0e0e0",
-  fontSize: 14,
-  width: "100%",
-  outline: "none",
-};
-
-const btnStyle: React.CSSProperties = {
-  padding: "6px 10px",
-  borderRadius: 6,
-  border: "1px solid #333",
-  background: "#1A2733",
-  color: "#aaa",
-  fontSize: 12,
-  cursor: "pointer",
-};
-
-const btnActiveStyle: React.CSSProperties = {
-  ...btnStyle,
-  borderColor: "#2AA5A0",
-  background: "rgba(42,165,160,0.15)",
-  color: "#3ECDC6",
-};
-
-const navBtnStyle: React.CSSProperties = {
-  padding: "8px 16px",
-  borderRadius: 8,
-  border: "1px solid #333",
-  background: "#243442",
-  color: "#e0e0e0",
-  fontSize: 13,
+const btnNextStyle: React.CSSProperties = {
+  padding: "12px 28px",
+  borderRadius: 50,
+  border: "none",
+  fontFamily: "'Outfit', system-ui, sans-serif",
+  fontSize: "0.9rem",
   fontWeight: 600,
   cursor: "pointer",
+  background: "linear-gradient(135deg, #2AA5A0, #157575)",
+  color: "white",
+  boxShadow: "0 4px 16px rgba(42,165,160,0.25)",
+};
+
+const btnGoldStyle: React.CSSProperties = {
+  ...btnNextStyle,
+  background: "linear-gradient(135deg, #C9A84C, #D4AF37)",
+  boxShadow: "0 4px 16px rgba(201,168,76,0.25)",
+};
+
+const btnBackStyle: React.CSSProperties = {
+  padding: "12px 28px",
+  borderRadius: 50,
+  border: "1px solid rgba(255,255,255,0.1)",
+  background: "transparent",
+  color: "rgba(255,255,255,0.4)",
+  fontFamily: "'Outfit', system-ui, sans-serif",
+  fontSize: "0.9rem",
+  fontWeight: 600,
+  cursor: "pointer",
+};
+
+const dbgL: React.CSSProperties = {
+  padding: "1px 8px 1px 0",
+  color: "rgba(255,255,255,0.25)",
+  whiteSpace: "nowrap",
 };
