@@ -3,8 +3,8 @@
 // CompletResultsStep — React port of renderCompletResults() from CYB_Render.js
 // =============================================================================
 
-import { useEffect, useMemo } from "react";
-import { trackCompletComplete, trackWhatsAppClick } from "@/lib/cyb-analytics";
+import { useEffect, useMemo, useState } from "react";
+import { trackCompletComplete, trackWhatsAppClick, trackBeginCheckout } from "@/lib/cyb-analytics";
 import { COPY } from "@/lib/cyb-copy";
 import { calcBMR, calcTDEE } from "@/lib/cyb-calc";
 import {
@@ -83,6 +83,49 @@ export function CompletResultsStep({
 }) {
   const P = profile;
   const A = ans;
+
+  // ── Checkout state ──────────────────────────────────────────────────
+  const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
+
+  function handleCheckout(packageId: string) {
+    if (checkoutLoading) return;
+    setCheckoutLoading(packageId);
+    trackBeginCheckout(packageId);
+
+    const payload: Record<string, any> = { packageId };
+    if (P) {
+      if (P.name) payload.customerName = P.name;
+      if (P.email) payload.customerEmail = P.email;
+      if (P.age) payload.profileAge = Number(P.age);
+      if (P.height) payload.profileHeight = Number(P.height);
+      if (P.weight) payload.profileWeight = Number(P.weight);
+      if (typeof P.activity !== "undefined") payload.profileActivity = Number(P.activity);
+      if (typeof P.goal !== "undefined") payload.profileGoal = Number(P.goal);
+      if (typeof P.moment !== "undefined") payload.profileMoment = Number(P.moment);
+    }
+    if (A && Object.keys(A).length > 0) {
+      payload.completAnswers = A;
+    }
+
+    fetch("/api/create-checkout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data && data.url) {
+          window.location.href = data.url;
+        } else {
+          console.error("Checkout response missing url", data);
+          setCheckoutLoading(null);
+        }
+      })
+      .catch((err) => {
+        console.error("Checkout error:", err);
+        setCheckoutLoading(null);
+      });
+  }
 
   // ── Analytics: fire once on first render if not already tracked ────
   useEffect(() => {
@@ -1420,19 +1463,22 @@ export function CompletResultsStep({
               >
                 {pk.desc}
               </p>
-              {/* checkout integration deferred */}
               <button
+                onClick={() => handleCheckout(pk.id)}
+                disabled={checkoutLoading !== null}
                 style={{
                   ...btnGoldFull,
                   width: "100%",
                   padding: 12,
                   fontSize: "0.88rem",
-                  cursor: "default",
-                  opacity: 0.85,
+                  cursor: checkoutLoading ? "wait" : "pointer",
+                  opacity: checkoutLoading ? 0.6 : 1,
                 }}
                 data-pkg={pk.id}
               >
-                {CR.ctaBuyLabel || "Vreau planul meu personalizat →"}
+                {checkoutLoading === pk.id
+                  ? "Se procesează..."
+                  : CR.ctaBuyLabel || "Vreau planul meu personalizat →"}
               </button>
             </div>
           );

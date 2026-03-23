@@ -38,6 +38,13 @@ export function trackCompletComplete(route: string): void {
   _fbq("track", "CompleteRegistration");
 }
 
+// ── Checkout events ─────────────────────────────────────────────────────
+
+export function trackBeginCheckout(packageId: string): void {
+  _gtag("event", "begin_checkout", { event_category: "purchase", package: packageId });
+  _fbq("track", "InitiateCheckout", { content_name: packageId });
+}
+
 // ── WhatsApp click events ───────────────────────────────────────────────
 
 export function trackWhatsAppClick(source: string): void {
