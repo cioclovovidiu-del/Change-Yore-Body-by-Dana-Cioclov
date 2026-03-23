@@ -13,6 +13,7 @@ import { MultiChoiceStep } from "./MultiChoiceStep";
 import { ScaleStep } from "./ScaleStep";
 import { TextareaStep } from "./TextareaStep";
 import { TransitionStep } from "./TransitionStep";
+import { MiniResultsStep } from "./MiniResultsStep";
 
 export interface StepDispatcherProps {
   step: Step;
@@ -22,11 +23,12 @@ export interface StepDispatcherProps {
   onProfileChange: (key: string, val: any) => void;
   onAnswerChange: (key: string, val: any) => void;
   onToggleMulti: (id: string, val: number) => void;
+  onStartComplet: () => void;
   onReset: () => void;
 }
 
 export function StepDispatcher(props: StepDispatcherProps) {
-  const { step, profile, ans, hasSavedProgress, onProfileChange, onAnswerChange, onToggleMulti, onReset } = props;
+  const { step, profile, ans, hasSavedProgress, onProfileChange, onAnswerChange, onToggleMulti, onStartComplet, onReset } = props;
   const t = step.type;
 
   // ── MINI profile-driven types ───────────────────────────────────────
@@ -69,6 +71,11 @@ export function StepDispatcher(props: StepDispatcherProps) {
   // ── Transition screens ──────────────────────────────────────────────
   if (t === "transition") {
     return <TransitionStep step={step} profile={profile} />;
+  }
+
+  // ── Results screens ─────────────────────────────────────────────────
+  if (t === "mini_results") {
+    return <MiniResultsStep profile={profile} hasSavedProgress={hasSavedProgress} onStartComplet={onStartComplet} onReset={onReset} />;
   }
 
   // ── Unsupported step types — generic fallback ───────────────────────

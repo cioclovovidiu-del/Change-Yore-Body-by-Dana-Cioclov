@@ -9,6 +9,7 @@
 import { useQuestionnaireRuntime } from "@/hooks/useQuestionnaireRuntime";
 import { StepDispatcher } from "@/components/questionnaire/StepDispatcher";
 import { COPY } from "@/lib/cyb-copy";
+import { canAdvanceStep } from "@/lib/cyb-questionnaire-state";
 
 export default function QuestionnaireRuntimeDevPage() {
   const rt = useQuestionnaireRuntime();
@@ -63,6 +64,7 @@ export default function QuestionnaireRuntimeDevPage() {
           onProfileChange={rt.setProfileValue}
           onAnswerChange={rt.setAnswerValue}
           onToggleMulti={rt.toggleMulti}
+          onStartComplet={rt.startComplet}
           onReset={rt.reset}
         />
       </div>
@@ -81,21 +83,20 @@ export default function QuestionnaireRuntimeDevPage() {
           </button>
           <button
             onClick={() => rt.goNext()}
-            style={s.type === "gdpr_email" ? btnGoldStyle : btnNextStyle}
+            disabled={!canAdvanceStep(s, rt.state)}
+            style={{
+              ...(s.type === "gdpr_email" ? btnGoldStyle : btnNextStyle),
+              ...(!canAdvanceStep(s, rt.state) ? { opacity: 0.35, pointerEvents: "none" as const, cursor: "not-allowed" } : {}),
+            }}
           >
             {btnLabel}
           </button>
         </div>
       )}
 
-      {/* ── Results actions (mini_results / complet_results) ──────── */}
-      {rt.progress.isResults && (
+      {/* ── Results actions (complet_results only — mini_results has inline CTA) */}
+      {rt.progress.isResults && s.type === "complet_results" && (
         <div style={{ ...btnRowStyle, justifyContent: "center", gap: 12 }}>
-          {s.type === "mini_results" && (
-            <button onClick={() => rt.startComplet()} style={btnGoldStyle}>
-              Completează chestionarul detaliat →
-            </button>
-          )}
           <button onClick={() => rt.reset()} style={{ ...btnBackStyle, visibility: "visible" }}>
             {COPY.ui.resetButton}
           </button>
