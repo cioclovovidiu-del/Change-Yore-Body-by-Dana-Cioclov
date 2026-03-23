@@ -411,7 +411,8 @@ function buildInternalNotificationHtml(payload: FulfillmentPayload): string {
 // ── C3/C5/C6/C7: Fulfillment trigger (returns DeliveryResult) ───────
 async function triggerFulfillment(
   payload: FulfillmentPayload,
-  profile: CustomerProfile | null
+  profile: CustomerProfile | null,
+  completAnswers?: Record<string, unknown> | null
 ): Promise<DeliveryResult> {
   let customerEmailSent = false;
   let profileReportSent = false;
@@ -489,6 +490,7 @@ async function triggerFulfillment(
         profile,
         mode: "email",
         reportUrl,
+        completAnswers,
       });
       const { error } = await resend.emails.send({
         from: emailFrom(),
@@ -691,7 +693,7 @@ export async function POST(request: Request) {
       );
 
       // C3/C5/C6: fulfillment (emails + report + delivery result)
-      const deliveryResult = await triggerFulfillment(payload, customerProfile);
+      const deliveryResult = await triggerFulfillment(payload, customerProfile, completAnswers);
 
       // C4: Mark as fulfilled in Stripe metadata (persistent idempotency)
       // C5: Include delivery summary in metadata

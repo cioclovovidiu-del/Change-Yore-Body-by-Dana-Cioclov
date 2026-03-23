@@ -271,8 +271,8 @@ export default async function CheckoutSuccessPage({
                     margin: "0 0 14px",
                   }}
                 >
-                  Raportul este gata! Include analiza BMI, BMR, TDEE și
-                  recomandări personalizate.
+                  Raportul este gata! Include analiza metabolică completă
+                  și profilul tău personalizat bazat pe răspunsurile tale.
                 </p>
                 <a
                   href={`/report?sid=${encodeURIComponent(session_id)}`}

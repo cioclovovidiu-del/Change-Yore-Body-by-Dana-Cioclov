@@ -152,6 +152,7 @@ export default async function ReportPage({
     packageName,
     profile,
     mode: "browser",
+    completAnswers,
   });
 
   return (
