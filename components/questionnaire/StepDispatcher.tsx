@@ -8,6 +8,11 @@ import { MeasuresStep } from "./MeasuresStep";
 import { ActivityStep } from "./ActivityStep";
 import { CardsStep } from "./CardsStep";
 import { GdprEmailStep } from "./GdprEmailStep";
+import { SingleChoiceStep } from "./SingleChoiceStep";
+import { MultiChoiceStep } from "./MultiChoiceStep";
+import { ScaleStep } from "./ScaleStep";
+import { TextareaStep } from "./TextareaStep";
+import { TransitionStep } from "./TransitionStep";
 
 export interface StepDispatcherProps {
   step: Step;
@@ -16,42 +21,57 @@ export interface StepDispatcherProps {
   hasSavedProgress: boolean;
   onProfileChange: (key: string, val: any) => void;
   onAnswerChange: (key: string, val: any) => void;
+  onToggleMulti: (id: string, val: number) => void;
   onReset: () => void;
 }
 
 export function StepDispatcher(props: StepDispatcherProps) {
-  const { step, profile, ans, hasSavedProgress, onProfileChange, onReset } = props;
+  const { step, profile, ans, hasSavedProgress, onProfileChange, onAnswerChange, onToggleMulti, onReset } = props;
   const t = step.type;
 
+  // ── MINI profile-driven types ───────────────────────────────────────
   if (t === "welcome") {
     return <WelcomeStep hasSavedProgress={hasSavedProgress} onReset={onReset} />;
   }
-
   if (t === "text") {
     return <TextInputStep step={step} value={profile[step.id] || ""} profile={profile} onChange={onProfileChange} />;
   }
-
   if (t === "number") {
     return <NumberInputStep step={step} value={profile[step.id]} profile={profile} onChange={onProfileChange} />;
   }
-
   if (t === "measures") {
     return <MeasuresStep step={step} height={profile.height} weight={profile.weight} profile={profile} onChange={onProfileChange} />;
   }
-
   if (t === "activity") {
     return <ActivityStep step={step} value={profile.activity} profile={profile} onChange={onProfileChange} />;
   }
-
   if (t === "cards") {
     return <CardsStep step={step} value={profile[step.id]} profile={profile} onChange={onProfileChange} />;
   }
-
   if (t === "gdpr_email") {
     return <GdprEmailStep step={step} email={profile.email || ""} gdpr={!!profile.gdpr} onChange={onProfileChange} />;
   }
 
-  // Unsupported step types — generic fallback
+  // ── COMPLET answer-driven types ─────────────────────────────────────
+  if (t === "single") {
+    return <SingleChoiceStep step={step} value={ans[step.id]} onChange={onAnswerChange} />;
+  }
+  if (t === "multi") {
+    return <MultiChoiceStep step={step} value={ans[step.id] || []} onToggle={onToggleMulti} />;
+  }
+  if (t === "scale") {
+    return <ScaleStep step={step} value={ans[step.id]} onChange={onAnswerChange} />;
+  }
+  if (t === "textarea") {
+    return <TextareaStep step={step} value={ans[step.id] || ""} onChange={onAnswerChange} />;
+  }
+
+  // ── Transition screens ──────────────────────────────────────────────
+  if (t === "transition") {
+    return <TransitionStep step={step} profile={profile} />;
+  }
+
+  // ── Unsupported step types — generic fallback ───────────────────────
   return (
     <div style={{ padding: "32px 24px", maxWidth: 520, color: "rgba(255,255,255,0.5)", fontSize: 13 }}>
       <div style={{ marginBottom: 8, fontSize: 11, color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: "0.1em" }}>

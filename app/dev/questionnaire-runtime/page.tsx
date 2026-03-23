@@ -62,6 +62,7 @@ export default function QuestionnaireRuntimeDevPage() {
           hasSavedProgress={rt.hasSavedProgress}
           onProfileChange={rt.setProfileValue}
           onAnswerChange={rt.setAnswerValue}
+          onToggleMulti={rt.toggleMulti}
           onReset={rt.reset}
         />
       </div>
