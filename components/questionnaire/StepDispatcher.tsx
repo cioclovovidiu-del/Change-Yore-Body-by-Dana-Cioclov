@@ -14,6 +14,7 @@ import { ScaleStep } from "./ScaleStep";
 import { TextareaStep } from "./TextareaStep";
 import { TransitionStep } from "./TransitionStep";
 import { MiniResultsStep } from "./MiniResultsStep";
+import { CompletResultsStep } from "./CompletResultsStep";
 
 export interface StepDispatcherProps {
   step: Step;
@@ -76,6 +77,9 @@ export function StepDispatcher(props: StepDispatcherProps) {
   // ── Results screens ─────────────────────────────────────────────────
   if (t === "mini_results") {
     return <MiniResultsStep profile={profile} hasSavedProgress={hasSavedProgress} onStartComplet={onStartComplet} onReset={onReset} />;
+  }
+  if (t === "complet_results") {
+    return <CompletResultsStep profile={profile} ans={ans} hasSavedProgress={hasSavedProgress} onReset={onReset} />;
   }
 
   // ── Unsupported step types — generic fallback ───────────────────────
