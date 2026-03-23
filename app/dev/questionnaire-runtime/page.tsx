@@ -60,11 +60,13 @@ export default function QuestionnaireRuntimeDevPage() {
           step={s}
           profile={rt.state.profile}
           ans={rt.state.ans}
+          state={rt.state}
           hasSavedProgress={rt.hasSavedProgress}
           onProfileChange={rt.setProfileValue}
           onAnswerChange={rt.setAnswerValue}
           onToggleMulti={rt.toggleMulti}
           onStartComplet={rt.startComplet}
+          onMarkFlag={rt.markFlag}
           onReset={rt.reset}
         />
       </div>

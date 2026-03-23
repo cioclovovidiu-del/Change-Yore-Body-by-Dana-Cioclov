@@ -108,6 +108,8 @@ export interface QuestionnaireRuntime {
   setProfileValue: (key: string, value: any) => void;
   /** Set an answer field (q1, q5, etc.). */
   setAnswerValue: (key: string, value: any) => void;
+  /** Set a dedup/tracking flag on state (e.g. _miniResultsTracked). */
+  markFlag: (flag: string) => void;
   /** Reset to fresh initial state and clear storage. */
   reset: () => void;
 }
@@ -186,6 +188,10 @@ export function useQuestionnaireRuntime(): QuestionnaireRuntime {
     }));
   }, []);
 
+  const markFlag = useCallback((flag: string): void => {
+    setState((s) => ({ ...s, [flag]: true }));
+  }, []);
+
   const reset = useCallback((): void => {
     clearStorage();
     setState(resetQuestionnaireState());
@@ -204,6 +210,7 @@ export function useQuestionnaireRuntime(): QuestionnaireRuntime {
     toggleMulti,
     setProfileValue,
     setAnswerValue,
+    markFlag,
     reset,
   };
 }

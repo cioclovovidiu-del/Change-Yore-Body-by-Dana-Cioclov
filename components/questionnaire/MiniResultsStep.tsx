@@ -1,11 +1,11 @@
 "use client";
 // =============================================================================
 // MiniResultsStep — React port of renderMiniResults() from CYB_Render.js
-// Skeleton: full presentation, no analytics, no dedup flags, no CTA delay.
 // =============================================================================
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { COPY } from "@/lib/cyb-copy";
+import { trackMiniComplete, trackWhatsAppClick } from "@/lib/cyb-analytics";
 import { calcBMI, calcBMR, calcTDEE, bmiCat, bmiPercent, idealWeight, projWeeks } from "@/lib/cyb-calc";
 import { interpretSignals, resolveRoute, selectMessage, personalize, calcStressScore, calcHormonalScore } from "@/lib/cyb-engine";
 import { buildPsychContext, buildFlowMessage } from "@/lib/cyb-psych";
@@ -35,13 +35,26 @@ export function MiniResultsStep({
   hasSavedProgress,
   onStartComplet,
   onReset,
+  tracked,
+  onMarkTracked,
 }: {
   profile: Record<string, any>;
   hasSavedProgress: boolean;
   onStartComplet: () => void;
   onReset: () => void;
+  tracked?: boolean;
+  onMarkTracked?: () => void;
 }) {
   const P = profile;
+
+  // ── Analytics: fire once on first render if not already tracked ────
+  useEffect(() => {
+    if (tracked) return;
+    const bmi = calcBMI(P.weight, P.height);
+    const route = COPY.route.get(P.moment ?? 5);
+    trackMiniComplete(route, bmi.toFixed(1));
+    onMarkTracked?.();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Computed values (mirrors legacy exactly) ──────────────────────
   const computed = useMemo(() => {
@@ -160,11 +173,11 @@ export function MiniResultsStep({
           Dacă simți că ți se potrivește, nu amâna — direcția corectă contează chiar de la început.
         </p>
         <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "18px 0" }} />
-        <a href={U.ctaDirectWhatsApp} target="_blank" rel="noopener noreferrer" style={btnGoldLink}>
+        <a href={U.ctaDirectWhatsApp} target="_blank" rel="noopener noreferrer" onClick={() => trackWhatsAppClick("mini_results_direct")} style={btnGoldLink}>
           {U.ctaDirectButton}
         </a>
         <p style={{ marginTop: 10, fontSize: "0.75rem", color: S.colors.text }}>{U.ctaGroupBody}</p>
-        <a href={U.ctaGroupWhatsApp} target="_blank" rel="noopener noreferrer" style={{ display: "inline-block", marginTop: 4, fontSize: "0.75rem", color: "rgba(37,211,102,0.7)", textDecoration: "underline" }}>
+        <a href={U.ctaGroupWhatsApp} target="_blank" rel="noopener noreferrer" onClick={() => trackWhatsAppClick("mini_results_group")} style={{ display: "inline-block", marginTop: 4, fontSize: "0.75rem", color: "rgba(37,211,102,0.7)", textDecoration: "underline" }}>
           {U.ctaGroupButton}
         </a>
       </div>

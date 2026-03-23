@@ -1,10 +1,10 @@
 "use client";
 // =============================================================================
 // CompletResultsStep — React port of renderCompletResults() from CYB_Render.js
-// Full presentation. No analytics, no API calls, no Stripe checkout, no timers.
 // =============================================================================
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
+import { trackCompletComplete, trackWhatsAppClick } from "@/lib/cyb-analytics";
 import { COPY } from "@/lib/cyb-copy";
 import { calcBMR, calcTDEE } from "@/lib/cyb-calc";
 import {
@@ -71,14 +71,26 @@ export function CompletResultsStep({
   ans,
   hasSavedProgress,
   onReset,
+  tracked,
+  onMarkTracked,
 }: {
   profile: Record<string, any>;
   ans: Record<string, any>;
   hasSavedProgress: boolean;
   onReset: () => void;
+  tracked?: boolean;
+  onMarkTracked?: () => void;
 }) {
   const P = profile;
   const A = ans;
+
+  // ── Analytics: fire once on first render if not already tracked ────
+  useEffect(() => {
+    if (tracked) return;
+    const route = COPY.route.get(P.moment ?? 5);
+    trackCompletComplete(route);
+    onMarkTracked?.();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Computed values ─────────────────────────────────────────────
   const computed = useMemo(() => {
@@ -1460,6 +1472,7 @@ export function CompletResultsStep({
           href={CR.ctaDirectWhatsApp}
           target="_blank"
           rel="noopener noreferrer"
+          onClick={() => trackWhatsAppClick("complet_results_direct")}
           style={{
             display: "inline-block",
             padding: "10px 24px",
@@ -1485,6 +1498,7 @@ export function CompletResultsStep({
           href={CR.ctaGroupWhatsApp}
           target="_blank"
           rel="noopener noreferrer"
+          onClick={() => trackWhatsAppClick("complet_results_group")}
           style={{
             display: "inline-block",
             marginTop: 4,

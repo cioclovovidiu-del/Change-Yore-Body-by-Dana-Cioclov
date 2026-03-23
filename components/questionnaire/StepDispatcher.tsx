@@ -20,16 +20,18 @@ export interface StepDispatcherProps {
   step: Step;
   profile: Record<string, any>;
   ans: Record<string, any>;
+  state: Record<string, any>;
   hasSavedProgress: boolean;
   onProfileChange: (key: string, val: any) => void;
   onAnswerChange: (key: string, val: any) => void;
   onToggleMulti: (id: string, val: number) => void;
   onStartComplet: () => void;
+  onMarkFlag: (flag: string) => void;
   onReset: () => void;
 }
 
 export function StepDispatcher(props: StepDispatcherProps) {
-  const { step, profile, ans, hasSavedProgress, onProfileChange, onAnswerChange, onToggleMulti, onStartComplet, onReset } = props;
+  const { step, profile, ans, state, hasSavedProgress, onProfileChange, onAnswerChange, onToggleMulti, onStartComplet, onMarkFlag, onReset } = props;
   const t = step.type;
 
   // ── MINI profile-driven types ───────────────────────────────────────
@@ -76,10 +78,10 @@ export function StepDispatcher(props: StepDispatcherProps) {
 
   // ── Results screens ─────────────────────────────────────────────────
   if (t === "mini_results") {
-    return <MiniResultsStep profile={profile} hasSavedProgress={hasSavedProgress} onStartComplet={onStartComplet} onReset={onReset} />;
+    return <MiniResultsStep profile={profile} hasSavedProgress={hasSavedProgress} onStartComplet={onStartComplet} onReset={onReset} tracked={!!state._miniResultsTracked} onMarkTracked={() => onMarkFlag("_miniResultsTracked")} />;
   }
   if (t === "complet_results") {
-    return <CompletResultsStep profile={profile} ans={ans} hasSavedProgress={hasSavedProgress} onReset={onReset} />;
+    return <CompletResultsStep profile={profile} ans={ans} hasSavedProgress={hasSavedProgress} onReset={onReset} tracked={!!state._completResultsTracked} onMarkTracked={() => onMarkFlag("_completResultsTracked")} />;
   }
 
   // ── Unsupported step types — generic fallback ───────────────────────
