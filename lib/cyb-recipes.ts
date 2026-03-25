@@ -5,6 +5,7 @@
 // =============================================================================
 
 import { calcBMR, calcTDEE } from "./cyb-calc";
+import { interpretSignals, resolveRoute, RouteName } from "./cyb-engine";
 
 // ── RECIPE INTERFACE ────────────────────────────────────────────────
 export interface Recipe {
@@ -825,49 +826,162 @@ export function filterRecipes(mealType: string, profile: any, ans: any): Recipe[
 // ── CALORIE TARGETS PER SLOT ─────────────────────────────────────────
 // Distributes daily kcal target across meal slots.
 // goal: 0=lose, 1=tone, 2=energy, 3=health
-export function calcSlotTargets(profile: any, ans: any): Record<string, number> {
+// ── SLOT TARGET TYPES ────────────────────────────────────────────────
+export interface SlotMacros {
+  kcal: number;
+  protein: number;
+  fat: number;
+  carbs: number;
+}
+
+export interface CalcSlotResult {
+  targetKcal: number;
+  proteinTarget: number;
+  fatTarget: number;
+  carbsTarget: number;
+  slotTargets: SlotMacros[];
+  // Legacy compat: keyed slot kcal values + dailyKcal for buildDayPlan
+  [key: string]: unknown;
+}
+
+// ── DEFICIT MATRIX: goal × route → deficit kcal ─────────────────────
+// goal: 0=lose, 1=tone, 2=energy, 3=health
+const DEFICIT_MATRIX: Record<string, number[]> = {
+  GENERAL:    [400, 200, 0, 0],
+  HORMONAL:   [350, 200, 0, 0],
+  BURNOUT:    [250, 150, 0, 0],
+  LOSS:       [250, 150, 0, 0],
+  DIVORCE:    [400, 200, 0, 0],
+  POSTPARTUM: [300, 150, 0, 0],
+};
+
+// ── FLOOR per route ──────────────────────────────────────────────────
+const FLOOR: Record<string, number> = {
+  GENERAL: 1200,
+  HORMONAL: 1300,
+  BURNOUT: 1350,
+  LOSS: 1350,
+  DIVORCE: 1200,
+  POSTPARTUM: 1400,
+};
+
+export function calcSlotTargets(profile: any, ans: any): CalcSlotResult {
   profile = profile || {}; ans = ans || {};
 
+  // ── 1. Route detection via engine ──────────────────────────────────
+  const signals = interpretSignals(profile, ans);
+  const routeResult = resolveRoute(profile, signals);
+  const route: RouteName = routeResult.route;
+
+  // ── 2. Calorie target ──────────────────────────────────────────────
   const bmr = calcBMR(profile.weight || 65, profile.height || 165, profile.age || 35);
   const tdee = calcTDEE(bmr, profile.activity || 0);
+  const goal = profile.goal ?? 0;
+  const weight = profile.weight || 65;
 
-  // Goal-based calorie adjustment
-  const goal = profile.goal;
-  let dailyKcal: number;
-  if (goal === 0) dailyKcal = tdee - 400;       // lose weight: moderate deficit
-  else if (goal === 1) dailyKcal = tdee - 200;   // tone: slight deficit
-  else if (goal === 2) dailyKcal = tdee;          // energy: maintenance
-  else dailyKcal = tdee;                          // health: maintenance
-
-  // Breastfeeding: add 300-500 kcal
   const breastfeeding = profile.moment === 0 && (ans.q4b === 0 || ans.q4b === 1);
-  if (breastfeeding) dailyKcal += 400;
 
-  // Floor: never go below 1200
-  if (dailyKcal < 1200) dailyKcal = 1200;
+  let deficit = (DEFICIT_MATRIX[route] || DEFICIT_MATRIX.GENERAL)[Math.min(goal, 3)];
+  if (breastfeeding) deficit = 0;
 
-  // Determine number of snacks based on q14 (meal frequency)
-  const mealFreq = ans.q14 !== undefined ? ans.q14 : 1;
-  const hasSnacks = (mealFreq >= 2); // "3 mese + gustări" or "mănânc când apuc"
+  let targetKcal = tdee - deficit;
+  if (breastfeeding) targetKcal += 300;
 
-  // Distribution ratios
-  const slots: Record<string, number> = {};
-  if (hasSnacks) {
-    slots.breakfast = Math.round(dailyKcal * 0.25);
-    slots.lunch     = Math.round(dailyKcal * 0.30);
-    slots.dinner    = Math.round(dailyKcal * 0.25);
-    slots.snack1    = Math.round(dailyKcal * 0.10);
-    slots.snack2    = Math.round(dailyKcal * 0.10);
+  const floor = FLOOR[route] || 1200;
+  if (targetKcal < floor) targetKcal = floor;
+  targetKcal = Math.round(targetKcal);
+
+  // ── 3. Macros ──────────────────────────────────────────────────────
+  // Protein: g/kg body weight
+  const isLowProteinRoute = route === 'BURNOUT' || route === 'LOSS';
+  const isMaintGoal = goal === 2 || goal === 3;
+  const proteinPerKg = (isLowProteinRoute || isMaintGoal) ? 1.4 : 1.6;
+  const proteinTarget = Math.round(Math.min(Math.max(weight * proteinPerKg, 60), 160));
+
+  // Fat: % of total kcal
+  let fatPct: number;
+  if (route === 'POSTPARTUM' || route === 'HORMONAL' || breastfeeding) {
+    fatPct = 0.30;
+  } else if (route === 'BURNOUT' || route === 'LOSS' || isMaintGoal) {
+    fatPct = 0.28;
   } else {
-    slots.breakfast = Math.round(dailyKcal * 0.28);
-    slots.lunch     = Math.round(dailyKcal * 0.38);
-    slots.dinner    = Math.round(dailyKcal * 0.34);
-    slots.snack1    = 0;
-    slots.snack2    = 0;
+    // GENERAL or DIVORCE with lose/tone goal
+    fatPct = 0.25;
   }
 
-  slots.dailyKcal = Math.round(dailyKcal);
-  return slots;
+  let fatTarget = Math.round(Math.min(Math.max((targetKcal * fatPct) / 9, 30), 90));
+
+  // Carbs: remainder
+  const proteinKcal = proteinTarget * 4;
+  const fatKcal = fatTarget * 9;
+  let carbsTarget = Math.round((targetKcal - proteinKcal - fatKcal) / 4);
+
+  // If carbs below 50g, reduce fat by 3% and recompute
+  if (carbsTarget < 50) {
+    fatPct = Math.max(fatPct - 0.03, 0);
+    fatTarget = Math.round(Math.min(Math.max((targetKcal * fatPct) / 9, 30), 90));
+    carbsTarget = Math.round((targetKcal - proteinKcal - (fatTarget * 9)) / 4);
+    if (carbsTarget < 50) carbsTarget = 50;
+  }
+
+  // ── 4. Meal distribution (q14) ────────────────────────────────────
+  let q14 = ans.q14 !== undefined ? ans.q14 : 1;
+
+  // Postpartum override: minimum 4 meals
+  const isPostpartum = route === 'POSTPARTUM';
+  if (isPostpartum && q14 <= 1) {
+    // q14=0 (2 meals) or q14=1 (3 meals) → force to q14=2 (3+snacks)
+    q14 = 2;
+  }
+
+  // Distribution ratios per q14 value
+  let ratios: number[];
+  if (q14 === 0) {
+    // 2 main meals + dinner → mapped as breakfast/lunch/dinner
+    ratios = [0.30, 0.40, 0.30];
+  } else if (q14 === 1) {
+    // 3 meals
+    ratios = [0.28, 0.38, 0.34];
+  } else if (q14 === 2) {
+    // 3 meals + 2 snacks
+    ratios = [0.25, 0.30, 0.25, 0.10, 0.10];
+  } else {
+    // q14=3 or q14=4 (irregular) → 3 meals + 2 snacks with adjusted ratios
+    ratios = [0.22, 0.28, 0.22, 0.14, 0.14];
+  }
+
+  const slotNames = ['breakfast', 'lunch', 'dinner', 'snack1', 'snack2'];
+  const slotTargets: SlotMacros[] = [];
+  const legacy: Record<string, number> = {};
+
+  for (let i = 0; i < ratios.length; i++) {
+    const r = ratios[i];
+    const slotKcal = Math.round(targetKcal * r);
+    slotTargets.push({
+      kcal: slotKcal,
+      protein: Math.round(proteinTarget * r),
+      fat: Math.round(fatTarget * r),
+      carbs: Math.round(carbsTarget * r),
+    });
+    legacy[slotNames[i]] = slotKcal;
+  }
+
+  // Fill remaining slots with 0 for legacy compat
+  for (let i = ratios.length; i < slotNames.length; i++) {
+    legacy[slotNames[i]] = 0;
+  }
+
+  // ── 5. Return structure ────────────────────────────────────────────
+  return {
+    targetKcal,
+    proteinTarget,
+    fatTarget,
+    carbsTarget,
+    slotTargets,
+    // Legacy keys for buildDayPlan compatibility
+    dailyKcal: targetKcal,
+    ...legacy,
+  };
 }
 
 // ── DETERMINISTIC RECIPE PICKER ──────────────────────────────────────
@@ -891,11 +1005,39 @@ export function pickRecipe(filtered: Recipe[], targetKcal: number, usedIds: Reco
   return best; // null if nothing available
 }
 
-// ── BUILD DAY PLAN ───────────────────────────────────────────────────
-// Returns a deterministic 1-day meal plan based on user profile + answers.
-// Output: { dailyKcal, slots: { breakfast: {recipe, targetKcal}, ... }, totalKcal, totalProtein, totalCarbs, totalFat }
-export function buildDayPlan(profile: any, ans: any): any {
+// ── RECIPE PICKER WITH SOFT EXCLUSIONS (multi-day variety) ──────────
+// Tries to pick avoiding softExclude IDs first; falls back to normal pick if no alternative.
+function pickRecipeWithVariety(
+  filtered: Recipe[],
+  targetKcal: number,
+  usedIds: Record<string, boolean>,
+  softExclude: Record<string, boolean>
+): Recipe | null {
+  // First pass: skip both hard (usedIds) and soft (recently used) exclusions
+  let best: Recipe | null = null;
+  let bestDist = Infinity;
+  for (let i = 0; i < filtered.length; i++) {
+    const r = filtered[i];
+    if (usedIds[r.id]) continue;
+    if (softExclude[r.id]) continue;
+    const dist = Math.abs(r.kcal - targetKcal);
+    if (dist < bestDist) { bestDist = dist; best = r; }
+  }
+  if (best) return best;
+
+  // Fallback: ignore soft exclusions, use normal pick
+  return pickRecipe(filtered, targetKcal, usedIds);
+}
+
+// ── BUILD DAY PLAN (internal) ────────────────────────────────────────
+// Core day plan builder with optional soft exclusion set for multi-day variety.
+function _buildDayPlanInternal(
+  profile: any,
+  ans: any,
+  softExclude?: Record<string, boolean>
+): any {
   profile = profile || {}; ans = ans || {};
+  const exclude = softExclude || {};
 
   const targets = calcSlotTargets(profile, ans);
   const usedIds: Record<string, boolean> = {};
@@ -916,17 +1058,17 @@ export function buildDayPlan(profile: any, ans: any): any {
   ];
 
   // Add snack slots if targets > 0
-  if (targets.snack1 > 0) slotDefs.push(['snack1', 'snack', 'snack1']);
-  if (targets.snack2 > 0) slotDefs.push(['snack2', 'snack', 'snack2']);
+  if ((targets.snack1 as number) > 0) slotDefs.push(['snack1', 'snack', 'snack1']);
+  if ((targets.snack2 as number) > 0) slotDefs.push(['snack2', 'snack', 'snack2']);
 
   for (let i = 0; i < slotDefs.length; i++) {
     const slotName = slotDefs[i][0];
     const mealType = slotDefs[i][1];
     const targetKey = slotDefs[i][2];
-    const targetKcal = targets[targetKey];
+    const targetKcal = targets[targetKey] as number;
 
     const filtered = filterRecipes(mealType, profile, ans);
-    const recipe = pickRecipe(filtered, targetKcal, usedIds);
+    const recipe = pickRecipeWithVariety(filtered, targetKcal, usedIds, exclude);
 
     if (recipe) {
       usedIds[recipe.id] = true;
@@ -949,6 +1091,126 @@ export function buildDayPlan(profile: any, ans: any): any {
   }
 
   return plan;
+}
+
+// ── BUILD DAY PLAN (public, unchanged contract) ──────────────────────
+// Returns a deterministic 1-day meal plan based on user profile + answers.
+// Output: { dailyKcal, slots: { breakfast: {recipe, targetKcal}, ... }, totalKcal, totalProtein, totalCarbs, totalFat }
+export function buildDayPlan(profile: any, ans: any): any {
+  return _buildDayPlanInternal(profile, ans);
+}
+
+// ── MULTI-DAY HELPERS ────────────────────────────────────────────────
+
+/** Collect all recipe IDs used in a day plan. */
+function _collectDayRecipeIds(plan: any): string[] {
+  const ids: string[] = [];
+  if (!plan || !plan.slots) return ids;
+  const keys = Object.keys(plan.slots);
+  for (let i = 0; i < keys.length; i++) {
+    const slot = plan.slots[keys[i]];
+    if (slot && slot.recipe) ids.push(slot.recipe.id);
+  }
+  return ids;
+}
+
+/** Aggregate shopping lists from multiple day plans into one combined list. */
+function _aggregateShoppingLists(dayPlans: any[]): { name: string; count: number; recipes: string[] }[] {
+  const map: Record<string, { name: string; count: number; recipes: string[] }> = {};
+
+  for (let d = 0; d < dayPlans.length; d++) {
+    const plan = dayPlans[d];
+    if (!plan || !plan.slots) continue;
+    const slots = plan.slots;
+    const keys = Object.keys(slots);
+
+    for (let i = 0; i < keys.length; i++) {
+      const slot = slots[keys[i]];
+      if (!slot || !slot.recipe) continue;
+      const recipe = slot.recipe;
+      const ingList = recipe.ingredients || [];
+
+      for (let j = 0; j < ingList.length; j++) {
+        const raw = ingList[j];
+        const key = raw.toLowerCase().trim();
+        if (!key) continue;
+        if (!map[key]) {
+          map[key] = { name: raw, count: 0, recipes: [] };
+        }
+        map[key].count++;
+        if (map[key].recipes.indexOf(recipe.title) === -1) {
+          map[key].recipes.push(recipe.title);
+        }
+      }
+    }
+  }
+
+  const list: { name: string; count: number; recipes: string[] }[] = [];
+  const mapKeys = Object.keys(map);
+  for (let k = 0; k < mapKeys.length; k++) {
+    list.push(map[mapKeys[k]]);
+  }
+  list.sort(function(a, b) {
+    return a.name.toLowerCase() < b.name.toLowerCase() ? -1 :
+           a.name.toLowerCase() > b.name.toLowerCase() ? 1 : 0;
+  });
+  return list;
+}
+
+// ── BUILD MULTI-DAY PLAN ─────────────────────────────────────────────
+// Generates a deterministic multi-day nutrition plan with variety.
+// Uses a rolling exclusion buffer to avoid consecutive-day recipe repeats.
+export function buildMultiDayPlan(
+  profile: any,
+  ans: any,
+  days: number = 7
+): {
+  days: { dayIndex: number; plan: any }[];
+  shoppingList: { name: string; count: number; recipes: string[] }[];
+  totals: { kcal: number; protein: number; fat: number; carbs: number };
+} {
+  profile = profile || {}; ans = ans || {};
+  days = Math.max(1, Math.floor(days));
+
+  const EXCLUSION_WINDOW = 2; // avoid recipes used in the last N days
+  const recentBuffer: string[][] = []; // rolling buffer of recipe IDs per day
+
+  const generatedDays: { dayIndex: number; plan: any }[] = [];
+  const allPlans: any[] = [];
+  const totals = { kcal: 0, protein: 0, fat: 0, carbs: 0 };
+
+  for (let d = 0; d < days; d++) {
+    // Build soft exclusion set from recent days
+    const softExclude: Record<string, boolean> = {};
+    const windowStart = Math.max(0, recentBuffer.length - EXCLUSION_WINDOW);
+    for (let w = windowStart; w < recentBuffer.length; w++) {
+      const ids = recentBuffer[w];
+      for (let r = 0; r < ids.length; r++) {
+        softExclude[ids[r]] = true;
+      }
+    }
+
+    // Build the day plan with variety exclusions
+    const plan = _buildDayPlanInternal(profile, ans, softExclude);
+
+    // Track recipes used this day
+    recentBuffer.push(_collectDayRecipeIds(plan));
+
+    generatedDays.push({ dayIndex: d, plan });
+    allPlans.push(plan);
+
+    // Accumulate totals
+    totals.kcal += plan.totalKcal || 0;
+    totals.protein += plan.totalProtein || 0;
+    totals.fat += plan.totalFat || 0;
+    totals.carbs += plan.totalCarbs || 0;
+  }
+
+  return {
+    days: generatedDays,
+    shoppingList: _aggregateShoppingLists(allPlans),
+    totals
+  };
 }
 
 // ── SHOPPING LIST ────────────────────────────────────────────────────

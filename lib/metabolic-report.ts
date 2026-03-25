@@ -4,6 +4,7 @@
 // =============================================================================
 
 import { calcBMI, calcBMR, calcTDEE } from "./cyb-calc";
+import { buildMultiDayPlan, calcSlotTargets } from "./cyb-recipes";
 
 export { calcBMI, calcBMR, calcTDEE };
 
@@ -546,6 +547,119 @@ function buildCompletSectionsHtml(
       </div>`;
 }
 
+// ── SLOT LABELS (Romanian) ───────────────────────────────────────────
+const SLOT_LABELS: Record<string, string> = {
+  breakfast: "Mic dejun",
+  lunch: "Prânz",
+  dinner: "Cină",
+  snack1: "Gustare 1",
+  snack2: "Gustare 2",
+};
+
+// ── 7-DAY MEAL PLAN HTML BUILDER ────────────────────────────────────
+function build7DayPlanHtml(
+  profile: CustomerProfile,
+  completAnswers: Record<string, unknown> | null | undefined
+): string {
+  try {
+    const ans = (completAnswers || {}) as Record<string, unknown>;
+    const multiPlan = buildMultiDayPlan(profile, ans, 7);
+    if (!multiPlan || !multiPlan.days || multiPlan.days.length === 0) return "";
+
+    const dayCards: string[] = [];
+    for (let d = 0; d < multiPlan.days.length; d++) {
+      const { plan } = multiPlan.days[d];
+      if (!plan || !plan.slots) continue;
+
+      const slotRows: string[] = [];
+      const slotKeys = ["breakfast", "lunch", "dinner", "snack1", "snack2"];
+      for (const key of slotKeys) {
+        const slot = plan.slots[key];
+        if (!slot || !slot.recipe) continue;
+        const r = slot.recipe;
+        slotRows.push(
+          `<tr>
+            <td style="padding:5px 8px;color:#C9A84C;font-size:12px;font-weight:600;vertical-align:top;white-space:nowrap;">${escapeHtml(SLOT_LABELS[key] || key)}</td>
+            <td style="padding:5px 8px;color:#e0e0e0;font-size:13px;">
+              ${escapeHtml(r.title)}
+              <span style="color:#777;font-size:11px;margin-left:6px;">${r.kcal} kcal · P${r.protein}g · C${r.carbs}g · G${r.fat}g</span>
+            </td>
+          </tr>`
+        );
+      }
+
+      if (slotRows.length === 0) continue;
+
+      dayCards.push(
+        `<div style="background:rgba(255,255,255,0.03);border-radius:10px;padding:14px;margin-bottom:10px;border:1px solid rgba(255,255,255,0.06);">
+          <p style="color:#C9A84C;font-size:12px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;margin:0 0 8px;">Ziua ${d + 1}</p>
+          <table style="width:100%;border-collapse:collapse;">${slotRows.join("")}</table>
+          <div style="margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.04);color:#666;font-size:11px;">
+            Total: ${plan.totalKcal} kcal · P${plan.totalProtein}g · C${plan.totalCarbs}g · G${plan.totalFat}g
+          </div>
+        </div>`
+      );
+    }
+
+    if (dayCards.length === 0) return "";
+
+    // Shopping list
+    let shoppingHtml = "";
+    if (multiPlan.shoppingList && multiPlan.shoppingList.length > 0) {
+      const items = multiPlan.shoppingList.map(
+        (item) =>
+          `<li style="color:#e0e0e0;font-size:13px;margin-bottom:4px;line-height:1.5;">${escapeHtml(item.name)}<span style="color:#777;font-size:11px;"> × ${item.count}</span></li>`
+      );
+      shoppingHtml = `
+        <div style="background:rgba(255,255,255,0.03);border-radius:10px;padding:14px;margin-top:12px;border:1px solid rgba(255,255,255,0.06);">
+          <p style="color:#C9A84C;font-size:12px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;margin:0 0 10px;">Listă de cumpărături (7 zile)</p>
+          <ul style="margin:0;padding:0 0 0 18px;">${items.join("")}</ul>
+        </div>`;
+    }
+
+    // Weekly totals
+    const t = multiPlan.totals;
+    const avgKcal = Math.round(t.kcal / multiPlan.days.length);
+    const totalsHtml = `
+      <div style="background:rgba(201,168,76,0.06);border-radius:10px;padding:14px;margin-top:12px;border:1px solid rgba(201,168,76,0.12);">
+        <p style="color:#C9A84C;font-size:12px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;margin:0 0 8px;">Totaluri săptămânale</p>
+        <table style="width:100%;border-collapse:collapse;">
+          <tr>
+            <td style="text-align:center;padding:6px;">
+              <div style="color:#fff;font-size:16px;font-weight:700;">${t.kcal}</div>
+              <div style="color:#666;font-size:11px;">kcal total</div>
+            </td>
+            <td style="text-align:center;padding:6px;border-left:1px solid rgba(255,255,255,0.06);">
+              <div style="color:#3B82F6;font-size:16px;font-weight:700;">${t.protein}g</div>
+              <div style="color:#666;font-size:11px;">Proteine</div>
+            </td>
+            <td style="text-align:center;padding:6px;border-left:1px solid rgba(255,255,255,0.06);">
+              <div style="color:#F59E0B;font-size:16px;font-weight:700;">${t.carbs}g</div>
+              <div style="color:#666;font-size:11px;">Carbohidrați</div>
+            </td>
+            <td style="text-align:center;padding:6px;border-left:1px solid rgba(255,255,255,0.06);">
+              <div style="color:#EF4444;font-size:16px;font-weight:700;">${t.fat}g</div>
+              <div style="color:#666;font-size:11px;">Grăsimi</div>
+            </td>
+          </tr>
+        </table>
+        <p style="color:#777;font-size:11px;margin:8px 0 0;text-align:center;">Media zilnică: ${avgKcal} kcal</p>
+      </div>`;
+
+    return `
+      <!-- 7-Day Nutrition Plan -->
+      <div style="margin-top:20px;padding-top:16px;border-top:1px solid rgba(201,168,76,0.12);">
+        <p style="color:#C9A84C;font-size:13px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;margin:0 0 14px;">Planul tău nutrițional — 7 zile</p>
+        ${dayCards.join("")}
+        ${totalsHtml}
+        ${shoppingHtml}
+      </div>`;
+  } catch (err) {
+    console.error("[metabolic-report] 7-day plan generation failed:", err);
+    return "";
+  }
+}
+
 // ── Shared report HTML generator ────────────────────────────────────
 export function buildMetabolicReportHtml(input: ReportInput): string {
   const { profile, mode = "email" } = input;
@@ -561,28 +675,30 @@ export function buildMetabolicReportHtml(input: ReportInput): string {
   const actLabel = ACTIVITY_LABELS[profile.activity] || "Necunoscut";
   const goalLabel = GOAL_LABELS[profile.goal] || "Necunoscut";
 
-  let targetKcal: number;
+  // N6B: Use calcSlotTargets for parity with the 7-day planner
+  const slotResult = calcSlotTargets(profile, (input.completAnswers || {}) as any);
+  const targetKcal = slotResult.targetKcal;
+  const proteinG = slotResult.proteinTarget;
+  const carbsG = slotResult.carbsTarget;
+  const fatG = slotResult.fatTarget;
+
   let targetNote: string;
   if (profile.goal === 0) {
-    targetKcal = Math.round(tdee - 500);
     targetNote =
-      "Deficit moderat de 500 kcal/zi pentru pierdere sănătoasă (~0.5 kg/săpt.)";
+      "Deficit calculat pe baza profilului tău pentru pierdere sănătoasă";
   } else if (profile.goal === 1) {
-    targetKcal = Math.round(tdee - 200);
     targetNote = "Ușor sub mentenanță pentru recompoziție corporală";
   } else {
-    targetKcal = Math.round(tdee);
     targetNote = "Mentenanță calorică pentru energie optimă";
   }
-
-  const proteinG = Math.round((targetKcal * 0.3) / 4);
-  const carbsG = Math.round((targetKcal * 0.35) / 4);
-  const fatG = Math.round((targetKcal * 0.35) / 9);
 
   // D13: Build enriched COMPLET sections (empty string if no answers)
   const enrichedHtml = input.completAnswers
     ? buildCompletSectionsHtml(input.completAnswers, profile)
     : "";
+
+  // N6: Build 7-day nutrition plan for the delivered report
+  const mealPlanHtml = build7DayPlanHtml(profile, input.completAnswers);
 
   // Browser mode extras
   const printButton =
@@ -714,6 +830,8 @@ export function buildMetabolicReportHtml(input: ReportInput): string {
       </div>
 
       ${enrichedHtml}
+
+      ${mealPlanHtml}
 
       <!-- Next Steps -->
       <p style="color:#999;font-size:13px;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin:0 0 10px;">Ce urmează:</p>
