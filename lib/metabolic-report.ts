@@ -111,6 +111,8 @@ export interface ReportInput {
   reportUrl?: string;
   /** D13: COMPLET questionnaire answers for enriched report sections */
   completAnswers?: Record<string, unknown> | null;
+  /** N9: Number of days for the nutrition plan. Defaults to 7 if omitted. */
+  days?: number;
 }
 
 // ── D13: COMPLET answer interpretation helpers ──────────────────────
@@ -556,14 +558,16 @@ const SLOT_LABELS: Record<string, string> = {
   snack2: "Gustare 2",
 };
 
-// ── 7-DAY MEAL PLAN HTML BUILDER ────────────────────────────────────
-function build7DayPlanHtml(
+// ── N-DAY MEAL PLAN HTML BUILDER ────────────────────────────────────
+function buildMealPlanHtml(
   profile: CustomerProfile,
-  completAnswers: Record<string, unknown> | null | undefined
+  completAnswers: Record<string, unknown> | null | undefined,
+  days: number = 7
 ): string {
   try {
+    const planDays = Math.max(1, Math.floor(days));
     const ans = (completAnswers || {}) as Record<string, unknown>;
-    const multiPlan = buildMultiDayPlan(profile, ans, 7);
+    const multiPlan = buildMultiDayPlan(profile, ans, planDays);
     if (!multiPlan || !multiPlan.days || multiPlan.days.length === 0) return "";
 
     const dayCards: string[] = [];
@@ -612,7 +616,7 @@ function build7DayPlanHtml(
       );
       shoppingHtml = `
         <div style="background:rgba(255,255,255,0.03);border-radius:10px;padding:14px;margin-top:12px;border:1px solid rgba(255,255,255,0.06);">
-          <p style="color:#C9A84C;font-size:12px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;margin:0 0 10px;">Listă de cumpărături (7 zile)</p>
+          <p style="color:#C9A84C;font-size:12px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;margin:0 0 10px;">Listă de cumpărături (${planDays} zile)</p>
           <ul style="margin:0;padding:0 0 0 18px;">${items.join("")}</ul>
         </div>`;
     }
@@ -622,7 +626,7 @@ function build7DayPlanHtml(
     const avgKcal = Math.round(t.kcal / multiPlan.days.length);
     const totalsHtml = `
       <div style="background:rgba(201,168,76,0.06);border-radius:10px;padding:14px;margin-top:12px;border:1px solid rgba(201,168,76,0.12);">
-        <p style="color:#C9A84C;font-size:12px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;margin:0 0 8px;">Totaluri săptămânale</p>
+        <p style="color:#C9A84C;font-size:12px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;margin:0 0 8px;">Totaluri (${planDays} zile)</p>
         <table style="width:100%;border-collapse:collapse;">
           <tr>
             <td style="text-align:center;padding:6px;">
@@ -647,15 +651,15 @@ function build7DayPlanHtml(
       </div>`;
 
     return `
-      <!-- 7-Day Nutrition Plan -->
+      <!-- N-Day Nutrition Plan -->
       <div style="margin-top:20px;padding-top:16px;border-top:1px solid rgba(201,168,76,0.12);">
-        <p style="color:#C9A84C;font-size:13px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;margin:0 0 14px;">Planul tău nutrițional — 7 zile</p>
+        <p style="color:#C9A84C;font-size:13px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;margin:0 0 14px;">Planul tău nutrițional — ${planDays} zile</p>
         ${dayCards.join("")}
         ${totalsHtml}
         ${shoppingHtml}
       </div>`;
   } catch (err) {
-    console.error("[metabolic-report] 7-day plan generation failed:", err);
+    console.error("[metabolic-report] Meal plan generation failed:", err);
     return "";
   }
 }
@@ -697,8 +701,9 @@ export function buildMetabolicReportHtml(input: ReportInput): string {
     ? buildCompletSectionsHtml(input.completAnswers, profile)
     : "";
 
-  // N6: Build 7-day nutrition plan for the delivered report
-  const mealPlanHtml = build7DayPlanHtml(profile, input.completAnswers);
+  // N6/N9: Build nutrition plan for the delivered report (default 7 days, custom if specified)
+  const reportDays = input.days && Number.isInteger(input.days) && input.days >= 1 ? input.days : 7;
+  const mealPlanHtml = buildMealPlanHtml(profile, input.completAnswers, reportDays);
 
   // Browser mode extras
   const printButton =

@@ -19,6 +19,7 @@ const PACKAGE_NAMES: Record<string, string> = {
   essential: "REBUILD Esențial (199€)",
   premium: "REBUILD Premium (299€)",
   coaching: "CYB Coaching Complet (499€)",
+  // N9: custom packages get dynamic name — see below
 };
 
 function errorPage(title: string, message: string): string {
@@ -142,7 +143,18 @@ export default async function ReportPage({
     session.metadata?.customerName ||
     session.customer_details?.name ||
     "";
-  const packageName = PACKAGE_NAMES[packageId] || "REBUILD Esențial";
+
+  // N9: Resolve package name and days for custom packages
+  let packageName: string;
+  let reportDays: number | undefined;
+  if (packageId === "custom") {
+    const rawDays = session.metadata?.cyb_custom_days;
+    const parsedDays = rawDays ? Number(rawDays) : null;
+    reportDays = parsedDays && Number.isInteger(parsedDays) && parsedDays >= 1 ? parsedDays : 7;
+    packageName = `Plan personalizat CYB - ${reportDays} zile`;
+  } else {
+    packageName = PACKAGE_NAMES[packageId] || "REBUILD Esențial";
+  }
 
   // D11: Extract COMPLET questionnaire answers (available for future enhanced reports)
   const completAnswers = extractCompletAnswers(session.metadata);
@@ -153,6 +165,8 @@ export default async function ReportPage({
     profile,
     mode: "browser",
     completAnswers,
+    // N9: pass custom days for dynamic plan generation
+    ...(reportDays ? { days: reportDays } : {}),
   });
 
   return (

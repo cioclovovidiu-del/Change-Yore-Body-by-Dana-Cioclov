@@ -39,7 +39,25 @@ const PACKAGE_NAMES: Record<string, string> = {
   essential: "REBUILD Esențial (199€)",
   premium: "REBUILD Premium (299€)",
   coaching: "CYB Coaching Complet (499€)",
+  // N9: custom is resolved dynamically from metadata — see resolveCustomPackageName()
 };
+
+// N9: Build dynamic package name for custom duration
+function resolveCustomPackageName(metadata: Record<string, string> | null | undefined): string {
+  const days = _parseCustomDays(metadata);
+  if (days) return `Plan personalizat CYB - ${days} zile`;
+  return "Plan personalizat CYB";
+}
+
+// N9: Safely parse cyb_custom_days from metadata
+function _parseCustomDays(metadata: Record<string, string> | null | undefined): number | null {
+  if (!metadata) return null;
+  const raw = metadata.cyb_custom_days;
+  if (!raw) return null;
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n < 1) return null;
+  return n;
+}
 
 // ── C3: Package → delivery intent mapping ───────────────────────────
 interface DeliveryIntent {
@@ -97,6 +115,8 @@ const DELIVERY_INTENTS: Record<string, DeliveryIntent> = {
     ],
   },
 };
+
+// N9: Custom delivery intent is built dynamically — see resolveDeliveryIntent()
 
 const DEFAULT_INTENT: DeliveryIntent = {
   type: "unknown",
@@ -175,6 +195,12 @@ const PACKAGE_ASSETS: Record<string, AssetEntry[]> = {
     { id: "weekly_adjustments", label: "Ajustări săptămânale personalizate", status: "not_applicable", channel: "manual", note: "Human service — ongoing throughout program" },
     { id: "vip_community", label: "Acces comunitate VIP", status: "not_applicable", channel: "platform", note: "Human service — Daniela grants access" },
     { id: "whatsapp_support", label: "Suport WhatsApp dedicat", status: "not_applicable", channel: "whatsapp", note: "Human service — Daniela initiates contact" },
+    { id: "confirmation_email", label: "Email confirmare comandă", status: "delivered", channel: "email", note: "Automated via Resend (C3)" },
+  ],
+  // N9: Custom package assets — meal plan days are dynamic but asset manifest is fixed
+  custom: [
+    { id: "meal_plan_custom", label: "Plan alimentar personalizat", status: "pending_manual", channel: "email", note: "N9: Duration set by cyb_custom_days metadata" },
+    { id: "profile_report", label: "Raport metabolic personalizat", status: "delivered", channel: "email", note: "N9: Automated — includes N-day nutrition plan" },
     { id: "confirmation_email", label: "Email confirmare comandă", status: "delivered", channel: "email", note: "Automated via Resend (C3)" },
   ],
 };
@@ -412,7 +438,8 @@ function buildInternalNotificationHtml(payload: FulfillmentPayload): string {
 async function triggerFulfillment(
   payload: FulfillmentPayload,
   profile: CustomerProfile | null,
-  completAnswers?: Record<string, unknown> | null
+  completAnswers?: Record<string, unknown> | null,
+  reportDays?: number | null
 ): Promise<DeliveryResult> {
   let customerEmailSent = false;
   let profileReportSent = false;
@@ -491,6 +518,8 @@ async function triggerFulfillment(
         mode: "email",
         reportUrl,
         completAnswers,
+        // N9: pass custom days for dynamic plan generation
+        ...(reportDays ? { days: reportDays } : {}),
       });
       const { error } = await resend.emails.send({
         from: emailFrom(),
@@ -654,11 +683,33 @@ export async function POST(request: Request) {
         }
       }
 
-      const packageName =
-        PACKAGE_NAMES[packageId] || `Unknown (${packageId || "no-id"})`;
+      // N9: Resolve package name — custom gets dynamic name from metadata
+      const packageName = packageId === "custom"
+        ? resolveCustomPackageName(session.metadata)
+        : (PACKAGE_NAMES[packageId] || `Unknown (${packageId || "no-id"})`);
 
-      // C3: Resolve delivery intent
-      const deliveryIntent = DELIVERY_INTENTS[packageId] || DEFAULT_INTENT;
+      // N9: Read custom days for downstream use
+      const customDays = packageId === "custom" ? _parseCustomDays(session.metadata) : null;
+
+      // C3/N9: Resolve delivery intent — custom gets dynamic intent
+      let deliveryIntent: DeliveryIntent;
+      if (packageId === "custom" && customDays) {
+        deliveryIntent = {
+          type: "custom_plan",
+          label: `Plan personalizat ${customDays} zile`,
+          includes: [
+            `Plan alimentar personalizat ${customDays} zile`,
+            "Raport metabolic personalizat",
+          ],
+          nextSteps: [
+            "Raportul tău metabolic este generat automat",
+            "Daniela va analiza profilul tău complet",
+            `Primești planul alimentar pe ${customDays} zile pe email`,
+          ],
+        };
+      } else {
+        deliveryIntent = DELIVERY_INTENTS[packageId] || DEFAULT_INTENT;
+      }
 
       // Build fulfillment payload (C3 extended)
       const payload: FulfillmentPayload = {
@@ -692,8 +743,8 @@ export async function POST(request: Request) {
         `[stripe-webhook] Payment confirmed: ${packageName} [${deliveryIntent.type}] — ${payload.customerEmail || "no-email"} — profile: ${customerProfile ? "available" : "missing"} — completAnswers: ${completAnswers ? Object.keys(completAnswers).length + " keys" : "none"}`
       );
 
-      // C3/C5/C6: fulfillment (emails + report + delivery result)
-      const deliveryResult = await triggerFulfillment(payload, customerProfile, completAnswers);
+      // C3/C5/C6/N9: fulfillment (emails + report + delivery result)
+      const deliveryResult = await triggerFulfillment(payload, customerProfile, completAnswers, customDays);
 
       // C4: Mark as fulfilled in Stripe metadata (persistent idempotency)
       // C5: Include delivery summary in metadata
