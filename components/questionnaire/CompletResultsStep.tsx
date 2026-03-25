@@ -105,12 +105,43 @@ export function CompletResultsStep({
   // ── Checkout state ──────────────────────────────────────────────────
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
 
-  function handleCheckout(packageId: string) {
-    if (checkoutLoading) return;
-    setCheckoutLoading(packageId);
-    trackBeginCheckout(packageId);
+  // N10: Custom duration state
+  const [customDays, setCustomDays] = useState<number>(30);
+  const [customError, setCustomError] = useState<string>("");
+  const CO = (CR as any).customOption || {} as any;
+  const customMin = CO.minDays || 14;
+  const customMax = CO.maxDays || 90;
+  const customPricePerDay = CO.pricePerDay || 7;
+  const customPrice = customDays * customPricePerDay;
 
-    const payload: Record<string, any> = { packageId };
+  function handleCustomDaysChange(val: string) {
+    setCustomError("");
+    const n = Number(val);
+    if (val === "" || isNaN(n)) {
+      setCustomDays(0);
+      return;
+    }
+    setCustomDays(Math.floor(n));
+  }
+
+  function validateCustomDays(): boolean {
+    if (!customDays || !Number.isInteger(customDays)) {
+      setCustomError(CO.errorInvalid || "Introdu un număr valid");
+      return false;
+    }
+    if (customDays < customMin) {
+      setCustomError(CO.errorMin || `Minim ${customMin} zile`);
+      return false;
+    }
+    if (customDays > customMax) {
+      setCustomError(CO.errorMax || `Maxim ${customMax} zile`);
+      return false;
+    }
+    return true;
+  }
+
+  function _buildPayloadBase(): Record<string, any> {
+    const payload: Record<string, any> = {};
     if (P) {
       if (P.name) payload.customerName = P.name;
       if (P.email) payload.customerEmail = P.email;
@@ -124,6 +155,12 @@ export function CompletResultsStep({
     if (A && Object.keys(A).length > 0) {
       payload.completAnswers = A;
     }
+    return payload;
+  }
+
+  function _doCheckout(payload: Record<string, any>, loadingId: string) {
+    setCheckoutLoading(loadingId);
+    trackBeginCheckout(loadingId);
 
     fetch("/api/create-checkout", {
       method: "POST",
@@ -133,7 +170,6 @@ export function CompletResultsStep({
       .then((r) => r.json())
       .then((data) => {
         if (data && data.url) {
-          // Break out of iframe if embedded (matches legacy cybCheckout behavior)
           try { window.top!.location.href = data.url; } catch { window.location.href = data.url; }
         } else {
           console.error("Checkout response missing url", data);
@@ -144,6 +180,22 @@ export function CompletResultsStep({
         console.error("Checkout error:", err);
         setCheckoutLoading(null);
       });
+  }
+
+  function handleCheckout(packageId: string) {
+    if (checkoutLoading) return;
+    const payload = _buildPayloadBase();
+    payload.packageId = packageId;
+    _doCheckout(payload, packageId);
+  }
+
+  function handleCustomCheckout() {
+    if (checkoutLoading) return;
+    if (!validateCustomDays()) return;
+    const payload = _buildPayloadBase();
+    payload.packageId = "custom";
+    payload.customDays = customDays;
+    _doCheckout(payload, "custom");
   }
 
   // ── Analytics: fire once on first render if not already tracked ────
@@ -1502,6 +1554,134 @@ export function CompletResultsStep({
             </div>
           );
         })}
+
+        {/* N10: Custom duration option */}
+        <div
+          style={{
+            textAlign: "left",
+            padding: 16,
+            borderRadius: 12,
+            border: "1px solid rgba(42,165,160,0.25)",
+            background: "rgba(42,165,160,0.04)",
+            marginBottom: 12,
+            marginTop: 8,
+          }}
+        >
+          <p
+            style={{
+              fontFamily: "'Cormorant Garamond', Georgia, serif",
+              fontSize: "1.05rem",
+              color: "white",
+              fontWeight: 600,
+              margin: "0 0 6px",
+            }}
+          >
+            {CO.heading || "Sau alege durată personalizată"}
+          </p>
+          <p
+            style={{
+              fontSize: "0.75rem",
+              color: S.colors.text,
+              lineHeight: 1.6,
+              margin: "0 0 12px",
+            }}
+          >
+            {CO.desc || "Plan alimentar pe exact câte zile ai nevoie."}
+          </p>
+
+          {/* Preset buttons */}
+          <div style={{ display: "flex", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
+            <span style={{ fontSize: "0.72rem", color: S.colors.text, alignSelf: "center", marginRight: 2 }}>
+              {CO.presetsLabel || "Alege rapid:"}
+            </span>
+            {(CO.presets || [14, 20, 30, 60]).map((d: number) => (
+              <button
+                key={d}
+                onClick={() => { setCustomDays(d); setCustomError(""); }}
+                style={{
+                  padding: "6px 14px",
+                  borderRadius: 20,
+                  border: customDays === d
+                    ? "1px solid rgba(42,165,160,0.6)"
+                    : "1px solid rgba(255,255,255,0.12)",
+                  background: customDays === d
+                    ? "rgba(42,165,160,0.15)"
+                    : "rgba(255,255,255,0.04)",
+                  color: customDays === d ? "#2AA5A0" : "rgba(255,255,255,0.7)",
+                  fontSize: "0.78rem",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  fontFamily: "'Outfit', system-ui, sans-serif",
+                }}
+              >
+                {d} zile
+              </button>
+            ))}
+          </div>
+
+          {/* Manual input */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+            <input
+              type="number"
+              min={customMin}
+              max={customMax}
+              value={customDays || ""}
+              onChange={(e) => handleCustomDaysChange(e.target.value)}
+              style={{
+                width: 70,
+                padding: "8px 10px",
+                borderRadius: 8,
+                border: customError
+                  ? "1px solid rgba(239,68,68,0.5)"
+                  : "1px solid rgba(255,255,255,0.15)",
+                background: "rgba(255,255,255,0.06)",
+                color: "white",
+                fontSize: "0.9rem",
+                fontFamily: "'Outfit', system-ui, sans-serif",
+                textAlign: "center",
+                outline: "none",
+              }}
+            />
+            <span style={{ fontSize: "0.78rem", color: S.colors.text }}>
+              {CO.inputLabel || "zile"}
+            </span>
+            <span style={{ marginLeft: "auto", fontSize: "0.92rem", color: S.colors.gold, fontWeight: 700 }}>
+              {customDays >= customMin ? `${customPrice}€` : "—"}
+            </span>
+          </div>
+
+          {/* Error */}
+          {customError && (
+            <p style={{ fontSize: "0.72rem", color: "#EF4444", margin: "0 0 8px" }}>
+              {customError}
+            </p>
+          )}
+
+          {/* Price breakdown */}
+          {customDays >= customMin && customDays <= customMax && (
+            <p style={{ fontSize: "0.68rem", color: "rgba(255,255,255,0.35)", margin: "0 0 10px" }}>
+              {customDays} zile × {customPricePerDay}€/zi = {customPrice}€
+            </p>
+          )}
+
+          <button
+            onClick={handleCustomCheckout}
+            disabled={checkoutLoading !== null}
+            style={{
+              ...btnGoldFull,
+              width: "100%",
+              padding: 12,
+              fontSize: "0.88rem",
+              cursor: checkoutLoading ? "wait" : "pointer",
+              opacity: checkoutLoading ? 0.6 : 1,
+            }}
+            data-pkg="custom"
+          >
+            {checkoutLoading === "custom"
+              ? "Se procesează..."
+              : (CO.buyLabel || "Cumpără planul personalizat →")}
+          </button>
+        </div>
 
         <p
           style={{

@@ -31,6 +31,7 @@ async function getSessionInfo(sessionId: string): Promise<{
   customerName: string;
   customerEmail: string;
   fulfilled: boolean;
+  customDays: number | null;
 } | null> {
   if (!process.env.STRIPE_SECRET_KEY) return null;
   try {
@@ -38,6 +39,10 @@ async function getSessionInfo(sessionId: string): Promise<{
       apiVersion: "2026-02-25.clover",
     });
     const session = await stripe.checkout.sessions.retrieve(sessionId);
+    // N10: Parse custom days from metadata
+    const rawDays = session.metadata?.cyb_custom_days;
+    const parsedDays = rawDays ? Number(rawDays) : null;
+    const customDays = parsedDays && Number.isInteger(parsedDays) && parsedDays >= 1 ? parsedDays : null;
     return {
       packageId: session.metadata?.packageId || "",
       customerName:
@@ -49,6 +54,7 @@ async function getSessionInfo(sessionId: string): Promise<{
         session.customer_details?.email ||
         "",
       fulfilled: session.metadata?.cyb_fulfilled === "true",
+      customDays,
     };
   } catch {
     return null;
@@ -65,15 +71,24 @@ export default async function CheckoutSuccessPage({
 
   // Resolve package-aware data (fallback to generic if unavailable)
   const packageId = info?.packageId || "";
-  const pkgDisplay = PACKAGE_DISPLAY[packageId] || null;
+  const customDays = info?.customDays || null;
+
+  // N10: Resolve display info — custom gets dynamic label
+  let pkgDisplay: { label: string; emoji: string } | null;
+  if (packageId === "custom" && customDays) {
+    pkgDisplay = { label: `Plan personalizat CYB - ${customDays} zile`, emoji: "📋" };
+  } else {
+    pkgDisplay = PACKAGE_DISPLAY[packageId] || null;
+  }
+
   const firstName = info?.customerName?.split(" ")[0] || "";
   const customerEmail = info?.customerEmail || "";
   const isEssential = packageId === "essential";
-  const hasPaidPackage = ["essential", "premium", "coaching"].includes(packageId);
+  const hasPaidPackage = ["essential", "premium", "coaching", "custom"].includes(packageId);
   const isFulfilled = info?.fulfilled === true;
 
   // Build "Ce urmează" steps based on package
-  const steps = buildSteps(packageId, isFulfilled);
+  const steps = buildSteps(packageId, isFulfilled, customDays);
 
   // WhatsApp message — package-aware if known
   const waMessage = pkgDisplay
@@ -435,8 +450,34 @@ export default async function CheckoutSuccessPage({
 // ── Package-aware step builder ─────────────────────────────────────
 function buildSteps(
   packageId: string,
-  isFulfilled: boolean
+  isFulfilled: boolean,
+  customDays?: number | null
 ): { step: string; text: string }[] {
+  // N10: Custom package steps
+  if (packageId === "custom") {
+    const daysLabel = customDays ? `${customDays} zile` : "personalizat";
+    return [
+      {
+        step: "1",
+        text: "Primești un email de confirmare cu detaliile comenzii",
+      },
+      {
+        step: "2",
+        text: isFulfilled
+          ? `Raportul tău metabolic + planul nutrițional pe ${daysLabel} sunt gata (vezi mai sus)`
+          : `Raportul tău metabolic + planul nutrițional pe ${daysLabel} se generează automat (câteva minute)`,
+      },
+      {
+        step: "3",
+        text: "Daniela analizează profilul tău complet și finalizează planul (24h)",
+      },
+      {
+        step: "4",
+        text: "Primești planul complet personalizat: nutriție + antrenament",
+      },
+    ];
+  }
+
   if (packageId === "essential") {
     return [
       {
