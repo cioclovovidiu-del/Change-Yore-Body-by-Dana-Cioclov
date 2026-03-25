@@ -33,10 +33,17 @@ const PACKAGES: Record<
   },
 };
 
+// ── N8: Custom duration pricing ─────────────────────────────────────
+const CUSTOM_PRICE_PER_DAY_EUR = 7; // 7 EUR/day
+const CUSTOM_MIN_DAYS = 14;
+const CUSTOM_MAX_DAYS = 90;
+
 interface CheckoutBody {
   packageId: string;
   customerName?: string;
   customerEmail?: string;
+  // N8: custom duration (only when packageId === "custom")
+  customDays?: number;
   // C6: profile fields for server-side report generation
   profileAge?: number;
   profileHeight?: number;
@@ -60,27 +67,87 @@ export async function POST(request: Request) {
 
     const body: CheckoutBody = await request.json();
     const {
-      packageId, customerName, customerEmail,
+      packageId, customerName, customerEmail, customDays,
       profileAge, profileHeight, profileWeight,
       profileActivity, profileGoal, profileMoment,
       completAnswers,
     } = body;
 
-    // Validate package
-    const pkg = PACKAGES[packageId];
-    if (!pkg) {
-      return NextResponse.json(
-        { error: "Invalid package" },
-        { status: 400 }
-      );
-    }
+    // ── Determine line_items + package name based on packageId ────────
+    let lineItems: Stripe.Checkout.SessionCreateParams.LineItem[];
+    let resolvedPackageName: string;
+    let extraMetadata: Record<string, string> = {};
 
-    // Guard: Price ID not configured
-    if (!pkg.priceId) {
-      return NextResponse.json(
-        { error: "Package not available yet" },
-        { status: 503 }
-      );
+    if (packageId === "custom") {
+      // ── N8: Custom duration validation ──────────────────────────────
+      if (customDays == null) {
+        return NextResponse.json(
+          { error: "customDays is required for custom package" },
+          { status: 400 }
+        );
+      }
+      if (!Number.isInteger(customDays)) {
+        return NextResponse.json(
+          { error: "customDays must be an integer" },
+          { status: 400 }
+        );
+      }
+      if (customDays < CUSTOM_MIN_DAYS) {
+        return NextResponse.json(
+          { error: `customDays must be at least ${CUSTOM_MIN_DAYS}` },
+          { status: 400 }
+        );
+      }
+      if (customDays > CUSTOM_MAX_DAYS) {
+        return NextResponse.json(
+          { error: `customDays must be at most ${CUSTOM_MAX_DAYS}` },
+          { status: 400 }
+        );
+      }
+
+      // N8: Compute price: days × 7 EUR, in cents
+      const unitAmountCents = customDays * CUSTOM_PRICE_PER_DAY_EUR * 100;
+      resolvedPackageName = `Plan personalizat CYB - ${customDays} zile`;
+
+      lineItems = [
+        {
+          price_data: {
+            currency: "eur",
+            unit_amount: unitAmountCents,
+            product_data: {
+              name: resolvedPackageName,
+            },
+          },
+          quantity: 1,
+        },
+      ];
+
+      extraMetadata.cyb_custom_days = String(customDays);
+    } else {
+      // ── Standard package flow (unchanged) ───────────────────────────
+      const pkg = PACKAGES[packageId];
+      if (!pkg) {
+        return NextResponse.json(
+          { error: "Invalid package" },
+          { status: 400 }
+        );
+      }
+
+      // Guard: Price ID not configured
+      if (!pkg.priceId) {
+        return NextResponse.json(
+          { error: "Package not available yet" },
+          { status: 503 }
+        );
+      }
+
+      resolvedPackageName = pkg.name;
+      lineItems = [
+        {
+          price: pkg.priceId,
+          quantity: 1,
+        },
+      ];
     }
 
     // Build origin for redirect URLs
@@ -122,12 +189,7 @@ export async function POST(request: Request) {
     const sessionParams: Stripe.Checkout.SessionCreateParams = {
       mode: "payment",
       payment_method_types: ["card"],
-      line_items: [
-        {
-          price: pkg.priceId,
-          quantity: 1,
-        },
-      ],
+      line_items: lineItems,
       success_url: `${origin}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/#mini-flow`,
       metadata: {
@@ -142,6 +204,8 @@ export async function POST(request: Request) {
         ...(profileMoment != null ? { cyb_moment: String(profileMoment) } : {}),
         // D11: COMPLET answers (chunked JSON)
         ...ansMetadata,
+        // N8: custom duration metadata
+        ...extraMetadata,
       },
     };
 
