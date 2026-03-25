@@ -4,7 +4,7 @@
 // =============================================================================
 
 import { useEffect, useMemo, useState } from "react";
-import { trackCompletComplete, trackWhatsAppClick, trackBeginCheckout, trackCustomDurationInteraction, trackCustomCheckoutClick } from "@/lib/cyb-analytics";
+import { trackCompletComplete, trackWhatsAppClick, trackBeginCheckout, trackCustomDurationInteraction, trackCustomCheckoutClick, trackOfferSelected } from "@/lib/cyb-analytics";
 import { COPY } from "@/lib/cyb-copy";
 import { calcBMR, calcTDEE } from "@/lib/cyb-calc";
 import {
@@ -206,6 +206,12 @@ export function CompletResultsStep({
 
   function handleCheckout(packageId: string) {
     if (checkoutLoading) return;
+    // N16: Track offer selection for standard packages
+    trackOfferSelected({
+      type: "standard",
+      packageId,
+      route: COPY.route.get(P.moment ?? 5),
+    });
     const payload = _buildPayloadBase();
     payload.packageId = packageId;
     _doCheckout(payload, packageId);
@@ -214,7 +220,16 @@ export function CompletResultsStep({
   function handleCustomCheckout() {
     if (checkoutLoading) return;
     if (!validateCustomDays()) return;
-    trackCustomCheckoutClick(customDays, customPrice, COPY.route.get(P.moment ?? 5));
+    const routeLabel = COPY.route.get(P.moment ?? 5);
+    // N16: Track offer selection for custom package
+    trackOfferSelected({
+      type: "custom",
+      packageId: "custom",
+      customDays,
+      price: customPrice,
+      route: routeLabel,
+    });
+    trackCustomCheckoutClick(customDays, customPrice, routeLabel);
     const payload = _buildPayloadBase();
     payload.packageId = "custom";
     payload.customDays = customDays;

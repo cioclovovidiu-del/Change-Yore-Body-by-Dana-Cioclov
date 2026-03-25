@@ -445,11 +445,22 @@ async function triggerFulfillment(
   let profileReportSent = false;
 
   // 1. Structured log (always — observability baseline)
+  // N16: Enrich with custom-duration analytics fields
+  const isCustom = payload.packageId === "custom";
+  const logEnrichment: Record<string, unknown> = { isCustom };
+  if (isCustom && reportDays) {
+    logEnrichment.customDays = reportDays;
+    logEnrichment.pricePerDay = payload.amountTotal ? Math.round((payload.amountTotal / 100) / reportDays) : null;
+  }
+  if (payload.amountTotal != null) {
+    logEnrichment.priceTotal = payload.amountTotal / 100;
+  }
   console.log(
     JSON.stringify({
       event: "CYB_PAYMENT_FULFILLED",
       ...payload,
       deliveryIntent: payload.deliveryIntent.type,
+      ...logEnrichment,
     })
   );
 
@@ -548,15 +559,16 @@ async function triggerFulfillment(
   // 5. C5/C6: Build deterministic delivery result
   const deliveryResult = buildDeliveryResult(payload, customerEmailSent, profileReportSent);
 
-  // 6. C5: Structured delivery result log
+  // 6. C5: Structured delivery result log (N16: enriched)
   console.log(
     JSON.stringify({
       event: "CYB_DELIVERY_RESULT",
       ...deliveryResult,
+      ...logEnrichment,
     })
   );
 
-  // 7. Delivery payload log (structured, for future DB/queue integration)
+  // 7. Delivery payload log (structured, for future DB/queue integration) (N16: enriched)
   console.log(
     JSON.stringify({
       event: "CYB_DELIVERY_READY",
@@ -566,6 +578,7 @@ async function triggerFulfillment(
       customerEmail: payload.customerEmail,
       purchasedAt: payload.purchasedAt,
       fulfillmentVersion: payload.fulfillmentVersion,
+      ...logEnrichment,
     })
   );
 

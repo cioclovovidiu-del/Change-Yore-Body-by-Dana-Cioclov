@@ -96,6 +96,25 @@ export default async function CheckoutSuccessPage({
     : "Bună Daniela, tocmai am finalizat plata și am o întrebare.";
   const waUrl = `https://wa.me/40721333040?text=${encodeURIComponent(waMessage)}`;
 
+  // N16: Build purchase_completed tracking script (fires once via sessionStorage guard)
+  const isCustom = packageId === "custom";
+  const amountTotal = null; // not available client-side without extra Stripe call; omit
+  const purchaseTrackingScript = hasPaidPackage ? `(function(){
+    try {
+      var key = "cyb_purchase_tracked_" + ${JSON.stringify(session_id || "")};
+      if (sessionStorage.getItem(key)) return;
+      sessionStorage.setItem(key, "1");
+      var p = {
+        event_category: "purchase",
+        packageId: ${JSON.stringify(packageId)},
+        isCustom: ${isCustom}
+      };
+      ${isCustom && customDays ? `p.customDays = ${customDays};` : ""}
+      if (typeof window.gtag === "function") window.gtag("event", "purchase_completed", p);
+      if (typeof window.fbq === "function") window.fbq("track", "Purchase", { content_name: p.packageId, currency: "EUR" });
+    } catch(e) {}
+  })();` : "";
+
   return (
     <div
       style={{
@@ -108,6 +127,10 @@ export default async function CheckoutSuccessPage({
         fontFamily: "var(--font-outfit), system-ui, sans-serif",
       }}
     >
+      {/* N16: Purchase completed tracking (fires once per session) */}
+      {purchaseTrackingScript && (
+        <script dangerouslySetInnerHTML={{ __html: purchaseTrackingScript }} />
+      )}
       <div
         style={{
           maxWidth: 520,

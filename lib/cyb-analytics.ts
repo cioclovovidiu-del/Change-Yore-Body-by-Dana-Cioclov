@@ -77,6 +77,46 @@ export function trackCustomCheckoutClick(days: number, price: number, route?: st
   _fbq("trackCustom", "CustomCheckoutClick", { days, price });
 }
 
+// ── N16: Offer selection + purchase completion ─────────────────────────
+
+export function trackOfferSelected(params: {
+  type: "custom" | "standard";
+  packageId: string;
+  customDays?: number;
+  price?: number;
+  route?: string;
+}): void {
+  const p: Record<string, unknown> = {
+    event_category: "purchase",
+    type: params.type,
+    packageId: params.packageId,
+  };
+  if (params.customDays !== undefined) p.customDays = params.customDays;
+  if (params.price !== undefined) p.price = params.price;
+  if (params.route) p.route = params.route;
+  _gtag("event", "offer_selected", p);
+  _fbq("trackCustom", "OfferSelected", p);
+}
+
+export function trackPurchaseCompleted(params: {
+  packageId: string;
+  isCustom: boolean;
+  customDays?: number;
+  price?: number;
+  route?: string;
+}): void {
+  const p: Record<string, unknown> = {
+    event_category: "purchase",
+    packageId: params.packageId,
+    isCustom: params.isCustom,
+  };
+  if (params.customDays !== undefined) p.customDays = params.customDays;
+  if (params.price !== undefined) p.price = params.price;
+  if (params.route) p.route = params.route;
+  _gtag("event", "purchase_completed", p);
+  _fbq("track", "Purchase", { content_name: params.packageId, value: params.price, currency: "EUR" });
+}
+
 // ── WhatsApp click events ───────────────────────────────────────────────
 
 export function trackWhatsAppClick(source: string): void {
