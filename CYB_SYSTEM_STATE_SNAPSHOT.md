@@ -1,7 +1,7 @@
 # CYB SYSTEM — CURRENT STATE SNAPSHOT
 
 > Generated: 2026-03-23
-> Updated: 2026-03-23 (post D6+D7 deploy)
+> Updated: 2026-03-25 (post N4–N12: nutrition targeting upgrade + custom-duration feature)
 > Covers: deployed production state — all changes live
 
 ---
@@ -31,7 +31,7 @@ None. All changes deployed.
 |-----------|--------|
 | **API version** | `2026-02-25.clover` |
 | **Checkout mode** | `payment` (one-time) |
-| **Packages** | 3 tiers |
+| **Packages** | 3 tiers + custom duration |
 
 **Package definitions:**
 
@@ -40,6 +40,9 @@ None. All changes deployed.
 | `essential` | REBUILD Esențial | 199€ | `STRIPE_PRICE_ESSENTIAL` env var |
 | `premium` | REBUILD Premium | 299€ (old: 399€) | `STRIPE_PRICE_PREMIUM` env var |
 | `coaching` | CYB Coaching Complet | 499€ | `STRIPE_PRICE_COACHING` env var |
+| `custom` | Plan personalizat CYB - N zile | days × 7€ (14–90 days) | Ad-hoc `price_data` (no pre-created Price ID) |
+
+**Custom duration (N8–N12):** Users select 14–90 days in questionnaire results. Price = days × 7€. Stripe session uses `price_data` with `cyb_custom_days` in metadata. Webhook, report, success page, and admin all resolve days dynamically.
 
 **Checkout flow:**
 1. User clicks CTA button → `cybCheckout(packageId)` in iframe
@@ -399,14 +402,14 @@ NO_KNEE, NO_BACK_L, NO_BACK_C, NO_SHOULDER, NO_HIP, NO_DISC, PELVIC_SAFE, NO_DIA
 
 | Asset | Package | Status |
 |-------|---------|--------|
-| Email confirmare comandă | All | `delivered` ✅ |
-| Raport metabolic personalizat | Essential only | `delivered` ✅ |
+| Email confirmare comandă | All (including custom) | `delivered` ✅ |
+| Raport metabolic personalizat | All (including custom, with N-day nutrition plan) | `delivered` ✅ |
 
 ### Other Limitations
 - **No database:** Stripe is the only persistence layer (session metadata stores profile)
 - **No user accounts:** No login, no dashboard
-- **No Premium/Coaching report:** Metabolic report auto-delivery is Essential-only
-- **No automated plan generation for paid packages:** Meal plan + training plan shown in questionnaire results are preview only; paid deliverables are manually created by Daniela
+- **Metabolic report + N-day nutrition plan:** Now auto-delivered for all packages (N4–N6). Essential defaults to 7 days; custom uses selected duration (14–90 days).
+- **Training plan still manual:** Meal plan is auto-generated in report; training plan shown in questionnaire is preview only; paid training deliverables are manually created by Daniela
 - **Report access:** Uses Stripe session ID as unguessable token (no expiry, no revocation)
 - **Admin endpoint:** `/api/admin/orders` — read-only Stripe query, protected by `ADMIN_API_KEY`
 - **No retry mechanism:** If webhook fails, no automatic retry (relies on Stripe's built-in retry)
