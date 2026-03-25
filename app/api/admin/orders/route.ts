@@ -84,8 +84,17 @@ export async function GET(request: Request) {
       .filter((s) => s.payment_status === "paid")
       .map((s) => {
         const packageId = s.metadata?.packageId || "";
-        const packageName =
-          PACKAGE_NAMES[packageId] || `Unknown (${packageId || "no-id"})`;
+        // N12: Resolve custom package name dynamically from metadata
+        let packageName: string;
+        if (packageId === "custom") {
+          const rawDays = s.metadata?.cyb_custom_days;
+          const days = rawDays ? Number(rawDays) : null;
+          packageName = days && Number.isInteger(days) && days >= 1
+            ? `Plan personalizat CYB - ${days} zile`
+            : "Plan personalizat CYB";
+        } else {
+          packageName = PACKAGE_NAMES[packageId] || `Unknown (${packageId || "no-id"})`;
+        }
 
         return {
           sessionId: s.id,
