@@ -4,7 +4,7 @@
 // =============================================================================
 
 import { useEffect, useMemo, useState } from "react";
-import { trackCompletComplete, trackWhatsAppClick, trackBeginCheckout } from "@/lib/cyb-analytics";
+import { trackCompletComplete, trackWhatsAppClick, trackBeginCheckout, trackCustomDurationInteraction, trackCustomCheckoutClick } from "@/lib/cyb-analytics";
 import { COPY } from "@/lib/cyb-copy";
 import { calcBMR, calcTDEE } from "@/lib/cyb-calc";
 import {
@@ -64,6 +64,23 @@ const SLOT_LABELS: Record<string, string> = {
   snack2: "🥜 Gustare 2",
 };
 
+// ── N15: Smart duration recommendation ──────────────────────────────
+function getRecommendedDays(profile: Record<string, any>): number {
+  const goal = Number(profile.goal ?? 0);
+  const weight = Number(profile.weight ?? 65);
+
+  // goal: 0=lose, 1=tone, 2=energy, 3=health
+  if (goal === 0) {
+    // Fat loss: heavier → longer plan
+    if (weight >= 90) return 30;
+    return 20;
+  }
+  if (goal === 1) return 20; // Tone
+  if (goal === 2 || goal === 3) return 14; // Energy / health → maintenance
+
+  return 20; // Fallback
+}
+
 // ── Component ───────────────────────────────────────────────────────
 
 export function CompletResultsStep({
@@ -105,8 +122,9 @@ export function CompletResultsStep({
   // ── Checkout state ──────────────────────────────────────────────────
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
 
-  // N10: Custom duration state
-  const [customDays, setCustomDays] = useState<number>(30);
+  // N10: Custom duration state (N15: default to smart recommendation)
+  const recommendedDays = useMemo(() => getRecommendedDays(P), [P]);
+  const [customDays, setCustomDays] = useState<number>(recommendedDays);
   const [customError, setCustomError] = useState<string>("");
   const CO = (CR as any).customOption || {} as any;
   const customMin = CO.minDays || 14;
@@ -121,7 +139,11 @@ export function CompletResultsStep({
       setCustomDays(0);
       return;
     }
-    setCustomDays(Math.floor(n));
+    const floored = Math.floor(n);
+    setCustomDays(floored);
+    if (floored >= customMin && floored <= customMax) {
+      trackCustomDurationInteraction(floored, "input");
+    }
   }
 
   function validateCustomDays(): boolean {
@@ -192,6 +214,7 @@ export function CompletResultsStep({
   function handleCustomCheckout() {
     if (checkoutLoading) return;
     if (!validateCustomDays()) return;
+    trackCustomCheckoutClick(customDays, customPrice, COPY.route.get(P.moment ?? 5));
     const payload = _buildPayloadBase();
     payload.packageId = "custom";
     payload.customDays = customDays;
@@ -1597,7 +1620,7 @@ export function CompletResultsStep({
             {(CO.presets || [14, 20, 30, 60]).map((d: number) => (
               <button
                 key={d}
-                onClick={() => { setCustomDays(d); setCustomError(""); }}
+                onClick={() => { setCustomDays(d); setCustomError(""); trackCustomDurationInteraction(d, "preset"); }}
                 style={{
                   padding: "6px 14px",
                   borderRadius: 20,

@@ -66,6 +66,17 @@ export function trackBeginCheckout(packageId: string): void {
   _fbq("track", "InitiateCheckout", { content_name: packageId });
 }
 
+// ── Custom duration events ──────────────────────────────────────────────
+
+export function trackCustomDurationInteraction(days: number, source: "preset" | "input"): void {
+  _gtag("event", "custom_duration_interaction", { event_category: "custom_package", days, source });
+}
+
+export function trackCustomCheckoutClick(days: number, price: number, route?: string): void {
+  _gtag("event", "custom_checkout_click", { event_category: "custom_package", days, price, route, source: "custom" });
+  _fbq("trackCustom", "CustomCheckoutClick", { days, price });
+}
+
 // ── WhatsApp click events ───────────────────────────────────────────────
 
 export function trackWhatsAppClick(source: string): void {
