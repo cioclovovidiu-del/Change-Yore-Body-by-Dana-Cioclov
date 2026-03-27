@@ -942,16 +942,31 @@ export function getExercisePosterImageId(nameOrEntry: string | ExerciseDBEntry):
   return db.media?.posterImageId || null;
 }
 
-/** Builds a watchable video URL from a video ID. Returns null if no ID. */
-export function buildExerciseVideoUrl(videoId: string | null | undefined): string | null {
-  if (!videoId) return null;
-  // YouTube short-link format — works for embeds and direct links
-  return `https://youtu.be/${videoId}`;
+// ── Local asset base path ────────────────────────────────────────────
+const EXERCISE_ASSET_BASE = '/assets/training/exercises';
+
+/** Builds a local video URL from an asset ID. Returns null if no ID.
+ *  e.g. "punte_fesieri/front" → "/assets/training/exercises/punte_fesieri/front.mp4" */
+export function buildExerciseVideoUrl(assetId: string | null | undefined): string | null {
+  if (!assetId) return null;
+  return `${EXERCISE_ASSET_BASE}/${assetId}.mp4`;
+}
+
+/** Builds a local poster image URL from a poster ID. Returns null if no ID.
+ *  e.g. "punte_fesieri/poster" → "/assets/training/exercises/punte_fesieri/poster.png" */
+export function buildExercisePosterUrl(posterId: string | null | undefined): string | null {
+  if (!posterId) return null;
+  return `${EXERCISE_ASSET_BASE}/${posterId}.png`;
 }
 
 /** Returns a full video URL for an exercise by name, or null. */
 export function getExerciseVideoUrl(nameOrEntry: string | ExerciseDBEntry): string | null {
   return buildExerciseVideoUrl(getExerciseCanonicalVideoId(nameOrEntry));
+}
+
+/** Returns a full poster URL for an exercise by name, or null. */
+export function getExercisePosterUrl(nameOrEntry: string | ExerciseDBEntry): string | null {
+  return buildExercisePosterUrl(getExercisePosterImageId(nameOrEntry));
 }
 
 // ── PROGRESSION READINESS HELPER ────────────────────────────────────
