@@ -5,6 +5,8 @@
 
 import { calcBMI, calcBMR, calcTDEE } from "./cyb-calc";
 import { buildMultiDayPlan, calcSlotTargets } from "./cyb-recipes";
+import { buildTrainingPlan4Weeks, enrichExercise } from "./cyb-training";
+import type { TrainingPlan4Weeks, TrainingPlanWeek, Session, ExerciseBlock } from "./cyb-training";
 
 export { calcBMI, calcBMR, calcTDEE };
 
@@ -664,6 +666,96 @@ function buildMealPlanHtml(
   }
 }
 
+// ── 4-Week Training Plan HTML ────────────────────────────────────────
+// Renders the full 4-week training plan for the delivered report.
+// Falls back to empty string if generation fails (report still works).
+
+function _renderExerciseRow(name: string, sets: number, reps: string, rest: string): string {
+  const enriched = enrichExercise({ name, sets, reps, rest });
+  const displayName = enriched.displayName || enriched.name_en || escapeHtml(name);
+  return `<tr>
+    <td style="padding:5px 8px;color:#e0e0e0;font-size:13px;border-bottom:1px solid rgba(255,255,255,0.04);">${escapeHtml(displayName)}</td>
+    <td style="padding:5px 8px;color:#2AA5A0;font-size:13px;text-align:center;border-bottom:1px solid rgba(255,255,255,0.04);white-space:nowrap;">${sets} × ${escapeHtml(reps)}</td>
+    <td style="padding:5px 8px;color:#888;font-size:12px;text-align:right;border-bottom:1px solid rgba(255,255,255,0.04);">${escapeHtml(rest)}</td>
+  </tr>`;
+}
+
+function _renderExerciseBlock(block: ExerciseBlock): string {
+  const rows = block.exercises.map(ex => _renderExerciseRow(ex.name, ex.sets, ex.reps, ex.rest)).join("");
+  return `<div style="margin-bottom:10px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+      <span style="color:#C9A84C;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;">${escapeHtml(block.block)}</span>
+      <span style="color:#666;font-size:11px;">${escapeHtml(block.duration)}</span>
+    </div>
+    <table style="width:100%;border-collapse:collapse;">
+      <tr>
+        <th style="padding:4px 8px;color:#666;font-size:11px;text-align:left;border-bottom:1px solid rgba(255,255,255,0.08);">Exercițiu</th>
+        <th style="padding:4px 8px;color:#666;font-size:11px;text-align:center;border-bottom:1px solid rgba(255,255,255,0.08);">Seturi × Rep</th>
+        <th style="padding:4px 8px;color:#666;font-size:11px;text-align:right;border-bottom:1px solid rgba(255,255,255,0.08);">Pauză</th>
+      </tr>
+      ${rows}
+    </table>
+  </div>`;
+}
+
+function _renderTrainingSession(session: Session, dayIndex: number): string {
+  const blocks = session.structure.map(b => _renderExerciseBlock(b)).join("");
+  return `<div style="background:rgba(255,255,255,0.02);border-radius:10px;padding:14px;margin-bottom:10px;border:1px solid rgba(255,255,255,0.05);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <div>
+        <span style="color:#2AA5A0;font-size:12px;font-weight:600;">Ziua ${dayIndex + 1}</span>
+        <span style="color:#e0e0e0;font-size:14px;font-weight:600;margin-left:8px;">${escapeHtml(session.title)}</span>
+      </div>
+      <span style="color:#888;font-size:12px;">${session.durationMin} min</span>
+    </div>
+    ${blocks}
+    ${session.notes ? `<p style="color:#888;font-size:12px;font-style:italic;margin:8px 0 0;">💡 ${escapeHtml(session.notes)}</p>` : ""}
+  </div>`;
+}
+
+function _renderTrainingWeek(week: TrainingPlanWeek): string {
+  const sessions = week.sessions.map((s, i) => _renderTrainingSession(s, i)).join("");
+  return `<div style="margin-bottom:20px;">
+    <div style="background:rgba(42,165,160,0.08);border-radius:10px;padding:14px;margin-bottom:12px;border:1px solid rgba(42,165,160,0.12);">
+      <p style="color:#2AA5A0;font-size:14px;font-weight:700;margin:0 0 4px;">${escapeHtml(week.label)}</p>
+      <p style="color:#ccc;font-size:13px;line-height:1.6;margin:0;">${escapeHtml(week.focus)}</p>
+      <p style="color:#888;font-size:12px;margin:6px 0 0;">${week.sessions.length} antrenamente · ${week.totalMinutes} minute total</p>
+    </div>
+    ${sessions}
+  </div>`;
+}
+
+function buildTrainingPlanHtml(
+  profile: CustomerProfile,
+  completAnswers: Record<string, unknown> | null | undefined,
+): string {
+  try {
+    const ans = (completAnswers || {}) as any;
+    const plan = buildTrainingPlan4Weeks(profile, ans);
+    if (!plan || !plan.weeks || plan.weeks.length === 0) return "";
+
+    const weeksHtml = plan.weeks.map(w => _renderTrainingWeek(w)).join("");
+
+    return `<div style="margin-top:24px;">
+      <p style="color:#C9A84C;font-size:13px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;margin:0 0 8px;">🏋️ Programul tău de antrenament — 4 săptămâni</p>
+      <p style="color:#ccc;font-size:13px;line-height:1.7;margin:0 0 16px;">
+        ${plan.frequency} antrenamente pe săptămână · ${plan.weeklyGoal}
+      </p>
+      <div style="background:rgba(255,255,255,0.02);border-radius:10px;padding:12px;margin-bottom:16px;border:1px solid rgba(255,255,255,0.05);">
+        <p style="color:#888;font-size:12px;line-height:1.7;margin:0;">
+          <strong style="color:#e0e0e0;">Cum funcționează:</strong> Săptămâna 1 construiește baza.
+          Săptămânile 2 și 3 cresc progresiv volumul. Săptămâna 4 consolidează prin volum redus.
+          Exercițiile sunt aceleași — doar intensitatea se ajustează.
+        </p>
+      </div>
+      ${weeksHtml}
+    </div>`;
+  } catch (err) {
+    console.error("[metabolic-report] Training plan generation failed:", err);
+    return "";
+  }
+}
+
 // ── Shared report HTML generator ────────────────────────────────────
 export function buildMetabolicReportHtml(input: ReportInput): string {
   const { profile, mode = "email" } = input;
@@ -704,6 +796,9 @@ export function buildMetabolicReportHtml(input: ReportInput): string {
   // N6/N9: Build nutrition plan for the delivered report (default 7 days, custom if specified)
   const reportDays = input.days && Number.isInteger(input.days) && input.days >= 1 ? input.days : 7;
   const mealPlanHtml = buildMealPlanHtml(profile, input.completAnswers, reportDays);
+
+  // Phase 3: Build 4-week training plan for the delivered report
+  const trainingPlanHtml = buildTrainingPlanHtml(profile, input.completAnswers);
 
   // Browser mode extras
   const printButton =
@@ -837,6 +932,8 @@ export function buildMetabolicReportHtml(input: ReportInput): string {
       ${enrichedHtml}
 
       ${mealPlanHtml}
+
+      ${trainingPlanHtml}
 
       <!-- Next Steps -->
       <p style="color:#999;font-size:13px;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin:0 0 10px;">Ce urmează:</p>

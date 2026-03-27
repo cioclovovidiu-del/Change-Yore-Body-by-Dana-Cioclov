@@ -174,7 +174,7 @@ interface AssetEntry {
 const PACKAGE_ASSETS: Record<string, AssetEntry[]> = {
   essential: [
     { id: "meal_plan_7d", label: "Plan alimentar 7 zile", status: "pending_manual", channel: "email", note: "Daniela generates manually from questionnaire data" },
-    { id: "training_4w", label: "Program antrenament 4 săptămâni", status: "pending_manual", channel: "email", note: "Daniela generates manually from questionnaire data" },
+    { id: "training_4w", label: "Program antrenament 4 săptămâni", status: "delivered", channel: "email", note: "Phase 3: Automated 4-week plan via buildTrainingPlan4Weeks — included in metabolic report" },
     { id: "profile_report", label: "Raport metabolic personalizat", status: "delivered", channel: "email", note: "Automated via C6 — server-side calc from real profile data" },
     { id: "confirmation_email", label: "Email confirmare comandă", status: "delivered", channel: "email", note: "Automated via Resend (C3)" },
   ],
@@ -242,6 +242,10 @@ function buildDeliveryResult(
     } else if (asset.id === "profile_report" && asset.status === "delivered") {
       // C6/D10: profile_report is "delivered" in manifest for all packages
       // actual delivery depends on whether we had profile data + sent it
+      if (profileReportSent) delivered.push(asset.id);
+      else pending.push(asset.id);
+    } else if (asset.id === "training_4w" && asset.status === "delivered") {
+      // Phase 3: training_4w is embedded in the metabolic report — delivered when report is sent
       if (profileReportSent) delivered.push(asset.id);
       else pending.push(asset.id);
     } else if (asset.status === "delivered") {

@@ -37,11 +37,51 @@ export interface Session {
   notes?: string;
 }
 
+// ── Exercise media pointers (future video/image integration) ────────
+export interface ExerciseMedia {
+  canonicalVideoId?: string;
+  angleFrontId?: string;
+  angleSideId?: string;
+  angleRearId?: string;
+  posterImageId?: string;
+  loopSeconds?: number;
+}
+
 export interface ExerciseDBEntry {
   en: string;
   instr: string;
   video_id?: string;
   modify_if?: string;
+  // Phase 1 — future-facing fields (all optional for backward compat)
+  displayName?: string;       // Client-facing name (fallback: en)
+  shortDesc?: string;         // Short description (fallback: instr)
+  muscleGroups?: string[];    // e.g. ['glutes','quads'] — for filtering/grouping
+  category?: string;          // e.g. 'compound','isolation','mobility','cardio'
+  difficulty?: 1 | 2 | 3;    // 1=beginner, 2=intermediate, 3=advanced
+  canProgress?: boolean;      // Whether sets/reps can increase across weeks
+  illustrationId?: string;    // Static illustration asset ID
+  media?: ExerciseMedia;      // Video/image pointers
+}
+
+// ── Enriched exercise (output of enrichExercise) ────────────────────
+export interface EnrichedExercise {
+  name: string;
+  name_en: string;
+  sets: number;
+  reps: string;
+  rest: string;
+  instructions: string;
+  video_id: string | null;
+  modify_if: string | null;
+  // Normalized future-facing fields
+  displayName: string;
+  shortDesc: string;
+  muscleGroups: string[];
+  category: string;
+  difficulty: 1 | 2 | 3;
+  canProgress: boolean;
+  illustrationId: string | null;
+  media: ExerciseMedia | null;
 }
 
 // ── SESSION DATABASE ─────────────────────────────────────────────────
@@ -844,8 +884,9 @@ export const EXERCISE_DB: Record<string, ExerciseDBEntry> = {
 
 // ── ENRICH EXERCISE ─────────────────────────────────────────────────
 // Merges EXERCISE_DB data into an exercise object.
-// Returns enriched copy with name_en, instructions, video_id, modify_if.
-export function enrichExercise(ex: any): any {
+// Returns enriched copy with all current + future-facing fields normalized.
+// Phase 2 will use the normalized fields for multi-week progression.
+export function enrichExercise(ex: any): EnrichedExercise | any {
   if (!ex || !ex.name) return ex;
   const db = EXERCISE_DB[ex.name];
   if (!db) return ex;
@@ -856,10 +897,36 @@ export function enrichExercise(ex: any): any {
     reps: ex.reps,
     rest: ex.rest,
     instructions: db.instr || '',
-    video_id: (db as any).video_id || null,
-    modify_if: (db as any).modify_if || null
+    video_id: db.video_id || null,
+    modify_if: db.modify_if || null,
+    // Normalized future-facing fields with safe fallbacks
+    displayName: db.displayName || db.en || ex.name,
+    shortDesc: db.shortDesc || db.instr || '',
+    muscleGroups: db.muscleGroups || [],
+    category: db.category || 'general',
+    difficulty: db.difficulty || 2,
+    canProgress: db.canProgress !== undefined ? db.canProgress : true,
+    illustrationId: db.illustrationId || null,
+    media: db.media || null,
   };
 }
+
+// ── PROGRESSION READINESS HELPER ────────────────────────────────────
+// Returns whether an exercise supports sets/reps progression across weeks.
+// Used by future multi-week plan builders to decide which exercises get
+// volume/intensity increases vs stay constant (e.g. stretches, walks).
+export function canExerciseProgress(ex: ExerciseDBEntry): boolean {
+  if (ex.canProgress !== undefined) return ex.canProgress;
+  // Default: progressable unless it's a known non-progressive pattern
+  return true;
+}
+
+// ── SESSION PROGRESSION NOTES ───────────────────────────────────────
+// Phase 2 will add progression overrides per session block. The likely
+// integration point is ExerciseBlock.exercises — each Exercise will
+// receive optional { setsOverride, repsOverride } from the progression
+// layer, leaving the Session/ExerciseBlock interfaces unchanged.
+// No runtime changes in this phase.
 
 
 // ── EXPERIENCE LEVEL MAP ─────────────────────────────────────────────
@@ -1157,5 +1224,249 @@ export function buildTrainingPlan(profile: any, ans: any): {
     frequency: frequency,
     sessions: selected,
     totalMinutes: totalMinutes
+  };
+}
+
+// =============================================================================
+// 4-WEEK TRAINING PLAN — Additive multi-week progression (Phase 2)
+// Built on top of buildTrainingPlan(). Does NOT replace it.
+// Consumers: future /program page, automated delivery in webhook.
+// =============================================================================
+
+// ── 4-Week Types ────────────────────────────────────────────────────
+
+export interface TrainingPlanWeek {
+  weekIndex: 1 | 2 | 3 | 4;
+  label: string;
+  focus: string;
+  sessions: Session[];
+  totalMinutes: number;
+}
+
+export interface TrainingPlan4Weeks {
+  weeklyGoal: string;
+  frequency: number;
+  totalWeeks: 4;
+  weeks: TrainingPlanWeek[];
+  totalMinutes: number;
+}
+
+// ── Week metadata ───────────────────────────────────────────────────
+
+const WEEK_META: { label: string; focus: string }[] = [
+  { label: 'Săptămâna 1 — Bază',                focus: 'Construim fundația. Învață mișcările, respectă pauzele, concentrează-te pe formă.' },
+  { label: 'Săptămâna 2 — Creștere ușoară',      focus: 'Volumul crește ușor. Adăugăm repetări sau secunde — corpul tău e deja mai pregătit.' },
+  { label: 'Săptămâna 3 — Creștere controlată',  focus: 'Cel mai intens punct al planului. Împinge-te puțin peste zona de confort — controlat.' },
+  { label: 'Săptămâna 4 — Consolidare',          focus: 'Volum redus, calitate maximă. Corpul se recuperează și fixează progresul.' },
+];
+
+// ── Progression constants ───────────────────────────────────────────
+// Week deltas are intentionally small and conservative.
+// Week 1 = base, Week 2 = +1 step, Week 3 = +2 steps, Week 4 = -1 from base (deload)
+
+interface ProgressionRule {
+  setsAdd: number;
+  repsAdd: number;
+  holdSecondsAdd: number;
+}
+
+const WEEK_RULES: ProgressionRule[] = [
+  { setsAdd: 0, repsAdd: 0, holdSecondsAdd: 0 },   // Week 1: base
+  { setsAdd: 0, repsAdd: 2, holdSecondsAdd: 5 },    // Week 2: +2 reps or +5 sec
+  { setsAdd: 1, repsAdd: 2, holdSecondsAdd: 5 },    // Week 3: +1 set, +2 reps or +5 sec
+  { setsAdd: 0, repsAdd: -2, holdSecondsAdd: -5 },  // Week 4: deload — slightly below base
+];
+
+// ── Block classification ────────────────────────────────────────────
+// Warm-up and cool-down blocks never progress.
+const NON_PROGRESSIVE_BLOCKS = ['Încălzire', 'Răcire'];
+
+function _isProgressiveBlock(blockName: string): boolean {
+  return !NON_PROGRESSIVE_BLOCKS.includes(blockName);
+}
+
+// ── Prescription parsing ────────────────────────────────────────────
+// Parses common rep/hold formats into a structured representation.
+// Returns null if the format is unrecognized (exercise stays unchanged).
+
+interface ParsedReps {
+  type: 'count' | 'count_per_side' | 'count_per_dir' | 'seconds' | 'seconds_per_side' | 'seconds_per_group' | 'minutes' | 'cycles' | 'breaths';
+  value: number;
+  suffix: string;      // e.g. '/parte', '/direcție', ' sec', ' min'
+  holdNote: string;     // e.g. '(2 sec pauză sus)', '(3 sec hold)'
+}
+
+function _parseReps(reps: string): ParsedReps | null {
+  const s = reps.trim();
+
+  // "10 (2 sec pauză sus)" or "8 (5 sec hold)" — count with hold note
+  let m = s.match(/^(\d+)\s*(\([^)]+\))$/);
+  if (m) return { type: 'count', value: parseInt(m[1]), suffix: '', holdNote: ' ' + m[2] };
+
+  // "8/parte", "10/parte", "12/parte"
+  m = s.match(/^(\d+)\/parte$/);
+  if (m) return { type: 'count_per_side', value: parseInt(m[1]), suffix: '/parte', holdNote: '' };
+
+  // "10/direcție", "8/direcție", "5/direcție"
+  m = s.match(/^(\d+)\/direcție$/);
+  if (m) return { type: 'count_per_dir', value: parseInt(m[1]), suffix: '/direcție', holdNote: '' };
+
+  // "30 sec/parte", "20 sec/parte", "15 sec/parte"
+  m = s.match(/^(\d+)\s*sec\/parte$/);
+  if (m) return { type: 'seconds_per_side', value: parseInt(m[1]), suffix: ' sec/parte', holdNote: '' };
+
+  // "30 sec/grupă", "20 sec/grupă"
+  m = s.match(/^(\d+)\s*sec\/grupă$/);
+  if (m) return { type: 'seconds_per_group', value: parseInt(m[1]), suffix: ' sec/grupă', holdNote: '' };
+
+  // "15 sec hold"
+  m = s.match(/^(\d+)\s*sec\s+hold$/);
+  if (m) return { type: 'seconds', value: parseInt(m[1]), suffix: ' sec hold', holdNote: '' };
+
+  // "60 sec", "30 sec", "20 sec", "15 sec"
+  m = s.match(/^(\d+)\s*sec$/);
+  if (m) return { type: 'seconds', value: parseInt(m[1]), suffix: ' sec', holdNote: '' };
+
+  // "2 min", "3 min", "5 min", "4 min", "10 min"
+  m = s.match(/^(\d+)\s*min$/);
+  if (m) return { type: 'minutes', value: parseInt(m[1]), suffix: ' min', holdNote: '' };
+
+  // "8 cicluri", "5 cicluri"
+  m = s.match(/^(\d+)\s*cicluri$/);
+  if (m) return { type: 'cycles', value: parseInt(m[1]), suffix: ' cicluri', holdNote: '' };
+
+  // "5 respirații", "8 respirații"
+  m = s.match(/^(\d+)\s*respirații$/);
+  if (m) return { type: 'breaths', value: parseInt(m[1]), suffix: ' respirații', holdNote: '' };
+
+  // Plain count: "10", "12", "15", "8", "5"
+  m = s.match(/^(\d+)$/);
+  if (m) return { type: 'count', value: parseInt(m[1]), suffix: '', holdNote: '' };
+
+  // Unrecognized format — return null (exercise stays unchanged)
+  return null;
+}
+
+function _formatReps(parsed: ParsedReps, newValue: number): string {
+  // Ensure value stays positive and reasonable
+  const v = Math.max(newValue, 1);
+  return v + parsed.suffix + parsed.holdNote;
+}
+
+// ── Exercise cloning + progression ──────────────────────────────────
+
+function _cloneExercise(ex: Exercise): Exercise {
+  return { name: ex.name, sets: ex.sets, reps: ex.reps, rest: ex.rest };
+}
+
+function _progressExercise(ex: Exercise, rule: ProgressionRule): Exercise {
+  const clone = _cloneExercise(ex);
+
+  // Check if this exercise can progress via EXERCISE_DB
+  const db = EXERCISE_DB[ex.name];
+  if (db && !canExerciseProgress(db)) return clone;
+
+  const parsed = _parseReps(ex.reps);
+  if (!parsed) return clone; // Unrecognized format — keep unchanged
+
+  // Apply sets progression (only for count-based exercises, not time-based warm-ups)
+  if (rule.setsAdd !== 0 && parsed.type === 'count' || parsed.type === 'count_per_side' || parsed.type === 'count_per_dir' || parsed.type === 'cycles') {
+    clone.sets = Math.max(ex.sets + rule.setsAdd, 1);
+  }
+
+  // Apply reps/hold progression based on type
+  switch (parsed.type) {
+    case 'count':
+    case 'count_per_side':
+    case 'count_per_dir':
+    case 'cycles':
+      clone.reps = _formatReps(parsed, parsed.value + rule.repsAdd);
+      break;
+    case 'seconds':
+    case 'seconds_per_side':
+    case 'seconds_per_group':
+      clone.reps = _formatReps(parsed, parsed.value + rule.holdSecondsAdd);
+      break;
+    case 'minutes':
+    case 'breaths':
+      // Don't progress minutes or breathing exercises — keep as-is
+      break;
+  }
+
+  return clone;
+}
+
+// ── Session cloning + week building ─────────────────────────────────
+
+function _cloneExerciseBlock(block: ExerciseBlock, rule: ProgressionRule): ExerciseBlock {
+  const progressive = _isProgressiveBlock(block.block);
+  return {
+    block: block.block,
+    duration: block.duration,
+    exercises: block.exercises.map(function(ex) {
+      return progressive ? _progressExercise(ex, rule) : _cloneExercise(ex);
+    }),
+  };
+}
+
+function _cloneSession(session: Session, rule: ProgressionRule): Session {
+  return {
+    id: session.id,
+    title: session.title,
+    type: session.type,
+    goalTags: session.goalTags.slice(),
+    intensity: session.intensity,
+    durationMin: session.durationMin,
+    suitableFor: session.suitableFor.slice(),
+    avoidFor: session.avoidFor.slice(),
+    equipment: session.equipment.slice(),
+    structure: session.structure.map(function(block) {
+      return _cloneExerciseBlock(block, rule);
+    }),
+    notes: session.notes,
+  };
+}
+
+// ── 4-Week Plan Builder ─────────────────────────────────────────────
+// Uses buildTrainingPlan() for session selection (week 1 base),
+// then applies conservative progression rules for weeks 2-4.
+
+export function buildTrainingPlan4Weeks(profile: any, ans: any): TrainingPlan4Weeks {
+  // Get the base weekly plan (session selection logic unchanged)
+  const base = buildTrainingPlan(profile, ans);
+
+  const weeks: TrainingPlanWeek[] = [];
+  let grandTotalMinutes = 0;
+
+  for (let w = 0; w < 4; w++) {
+    const rule = WEEK_RULES[w];
+    const meta = WEEK_META[w];
+
+    const weekSessions = base.sessions.map(function(session) {
+      return _cloneSession(session, rule);
+    });
+
+    let weekMinutes = 0;
+    for (let s = 0; s < weekSessions.length; s++) {
+      weekMinutes += weekSessions[s].durationMin;
+    }
+
+    weeks.push({
+      weekIndex: (w + 1) as 1 | 2 | 3 | 4,
+      label: meta.label,
+      focus: meta.focus,
+      sessions: weekSessions,
+      totalMinutes: weekMinutes,
+    });
+
+    grandTotalMinutes += weekMinutes;
+  }
+
+  return {
+    weeklyGoal: base.weeklyGoal,
+    frequency: base.frequency,
+    totalWeeks: 4,
+    weeks: weeks,
+    totalMinutes: grandTotalMinutes,
   };
 }
