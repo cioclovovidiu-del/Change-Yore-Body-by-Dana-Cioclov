@@ -671,9 +671,11 @@ function buildMealPlanHtml(
 // Falls back to empty string if generation fails (report still works).
 
 function _renderExerciseRow(name: string, sets: number, reps: string, rest: string): string {
-  // Use the original Romanian exercise name as primary display (name is the RO key in EXERCISE_DB)
+  const enriched = enrichExercise({ name, sets, reps, rest });
+  // displayName resolves: db.displayName → ex.name (Romanian) → db.en (English)
+  const label = enriched.displayName || name;
   return `<tr>
-    <td style="padding:5px 8px;color:#e0e0e0;font-size:13px;border-bottom:1px solid rgba(255,255,255,0.04);">${escapeHtml(name)}</td>
+    <td style="padding:5px 8px;color:#e0e0e0;font-size:13px;border-bottom:1px solid rgba(255,255,255,0.04);">${escapeHtml(label)}</td>
     <td style="padding:5px 8px;color:#2AA5A0;font-size:13px;text-align:center;border-bottom:1px solid rgba(255,255,255,0.04);white-space:nowrap;">${sets} × ${escapeHtml(reps)}</td>
     <td style="padding:5px 8px;color:#888;font-size:12px;text-align:right;border-bottom:1px solid rgba(255,255,255,0.04);">${escapeHtml(rest)}</td>
   </tr>`;

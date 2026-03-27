@@ -900,7 +900,8 @@ export function enrichExercise(ex: any): EnrichedExercise | any {
     video_id: db.video_id || null,
     modify_if: db.modify_if || null,
     // Normalized future-facing fields with safe fallbacks
-    displayName: db.displayName || db.en || ex.name,
+    // displayName: db.displayName (explicit override) → ex.name (Romanian DB key) → db.en (English)
+    displayName: db.displayName || ex.name || db.en,
     shortDesc: db.shortDesc || db.instr || '',
     muscleGroups: db.muscleGroups || [],
     category: db.category || 'general',
