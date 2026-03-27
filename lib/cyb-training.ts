@@ -82,6 +82,9 @@ export interface EnrichedExercise {
   canProgress: boolean;
   illustrationId: string | null;
   media: ExerciseMedia | null;
+  // Video convenience fields (derived from media/video_id)
+  hasVideo: boolean;
+  videoId: string | null;
 }
 
 // ── SESSION DATABASE ─────────────────────────────────────────────────
@@ -909,7 +912,34 @@ export function enrichExercise(ex: any): EnrichedExercise | any {
     canProgress: db.canProgress !== undefined ? db.canProgress : true,
     illustrationId: db.illustrationId || null,
     media: db.media || null,
+    // Video convenience: resolved from media.canonicalVideoId → legacy video_id
+    hasVideo: !!(db.media?.canonicalVideoId || db.video_id),
+    videoId: db.media?.canonicalVideoId || db.video_id || null,
   };
+}
+
+// ── VIDEO/MEDIA HELPERS ─────────────────────────────────────────────
+// Standalone helpers for consumers that don't call enrichExercise().
+
+/** Returns true if the exercise has any video mapping in the DB. */
+export function hasExerciseVideo(nameOrEntry: string | ExerciseDBEntry): boolean {
+  const db = typeof nameOrEntry === 'string' ? EXERCISE_DB[nameOrEntry] : nameOrEntry;
+  if (!db) return false;
+  return !!(db.media?.canonicalVideoId || db.video_id);
+}
+
+/** Returns the canonical video ID for an exercise, or null. */
+export function getExerciseCanonicalVideoId(nameOrEntry: string | ExerciseDBEntry): string | null {
+  const db = typeof nameOrEntry === 'string' ? EXERCISE_DB[nameOrEntry] : nameOrEntry;
+  if (!db) return null;
+  return db.media?.canonicalVideoId || db.video_id || null;
+}
+
+/** Returns the poster image ID for an exercise, or null. */
+export function getExercisePosterImageId(nameOrEntry: string | ExerciseDBEntry): string | null {
+  const db = typeof nameOrEntry === 'string' ? EXERCISE_DB[nameOrEntry] : nameOrEntry;
+  if (!db) return null;
+  return db.media?.posterImageId || null;
 }
 
 // ── PROGRESSION READINESS HELPER ────────────────────────────────────
