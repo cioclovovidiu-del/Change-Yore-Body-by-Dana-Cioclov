@@ -5,7 +5,7 @@
 
 import { calcBMI, calcBMR, calcTDEE } from "./cyb-calc";
 import { buildMultiDayPlan, calcSlotTargets } from "./cyb-recipes";
-import { buildTrainingPlan4Weeks, enrichExercise } from "./cyb-training";
+import { buildTrainingPlan4Weeks, enrichExercise, buildExerciseVideoUrl } from "./cyb-training";
 import type { TrainingPlan4Weeks, TrainingPlanWeek, Session, ExerciseBlock } from "./cyb-training";
 
 export { calcBMI, calcBMR, calcTDEE };
@@ -672,10 +672,14 @@ function buildMealPlanHtml(
 
 function _renderExerciseRow(name: string, sets: number, reps: string, rest: string): string {
   const enriched = enrichExercise({ name, sets, reps, rest });
-  // displayName resolves: db.displayName → ex.name (Romanian) → db.en (English)
   const label = enriched.displayName || name;
+  // Video link: tiny "▶" next to name, only if exercise has a mapped video
+  const videoUrl = enriched.hasVideo ? buildExerciseVideoUrl(enriched.videoId) : null;
+  const videoLink = videoUrl
+    ? ` <a href="${escapeHtml(videoUrl)}" target="_blank" rel="noopener noreferrer" style="color:#2AA5A0;font-size:11px;text-decoration:none;margin-left:4px;" title="Vezi demonstrație">▶</a>`
+    : '';
   return `<tr>
-    <td style="padding:5px 8px;color:#e0e0e0;font-size:13px;border-bottom:1px solid rgba(255,255,255,0.04);">${escapeHtml(label)}</td>
+    <td style="padding:5px 8px;color:#e0e0e0;font-size:13px;border-bottom:1px solid rgba(255,255,255,0.04);">${escapeHtml(label)}${videoLink}</td>
     <td style="padding:5px 8px;color:#2AA5A0;font-size:13px;text-align:center;border-bottom:1px solid rgba(255,255,255,0.04);white-space:nowrap;">${sets} × ${escapeHtml(reps)}</td>
     <td style="padding:5px 8px;color:#888;font-size:12px;text-align:right;border-bottom:1px solid rgba(255,255,255,0.04);">${escapeHtml(rest)}</td>
   </tr>`;

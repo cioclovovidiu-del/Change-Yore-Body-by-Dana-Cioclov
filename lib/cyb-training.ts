@@ -942,6 +942,18 @@ export function getExercisePosterImageId(nameOrEntry: string | ExerciseDBEntry):
   return db.media?.posterImageId || null;
 }
 
+/** Builds a watchable video URL from a video ID. Returns null if no ID. */
+export function buildExerciseVideoUrl(videoId: string | null | undefined): string | null {
+  if (!videoId) return null;
+  // YouTube short-link format — works for embeds and direct links
+  return `https://youtu.be/${videoId}`;
+}
+
+/** Returns a full video URL for an exercise by name, or null. */
+export function getExerciseVideoUrl(nameOrEntry: string | ExerciseDBEntry): string | null {
+  return buildExerciseVideoUrl(getExerciseCanonicalVideoId(nameOrEntry));
+}
+
 // ── PROGRESSION READINESS HELPER ────────────────────────────────────
 // Returns whether an exercise supports sets/reps progression across weeks.
 // Used by future multi-week plan builders to decide which exercises get
