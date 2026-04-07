@@ -8,7 +8,7 @@ import {
   escapeHtml,
   type CustomerProfile,
 } from "@/lib/metabolic-report";
-import { emailFrom, emailReplyTo, DANIELA_EMAIL } from "@/lib/email-config";
+import { emailFrom, emailReplyTo, DANIELA_EMAIL, listUnsubscribeHeaders, emailLegalFooterHtml } from "@/lib/email-config";
 
 // ── Stripe init (safe: null if env missing) ─────────────────────────
 let stripe: Stripe | null = null;
@@ -402,9 +402,7 @@ function buildCustomerConfirmationHtml(payload: FulfillmentPayload): string {
       </div>
     </div>
 
-    <p style="text-align:center;color:#444;font-size:11px;margin-top:20px;">
-      Change Your Body by Daniela Cioclov · changeyourbody.ro
-    </p>
+    ${emailLegalFooterHtml()}
   </div>
 </body>
 </html>`;
@@ -477,6 +475,7 @@ async function triggerFulfillment(
         to: payload.customerEmail,
         subject: `Confirmare comandă — ${payload.packageName}`,
         html: buildCustomerConfirmationHtml(payload),
+        headers: listUnsubscribeHeaders(),
       });
       if (error) {
         console.error("[fulfillment] Customer email failed:", error);
@@ -542,6 +541,7 @@ async function triggerFulfillment(
         to: payload.customerEmail,
         subject: `Raportul tău metabolic personalizat — Change Your Body`,
         html: reportHtml,
+        headers: listUnsubscribeHeaders(),
       });
       if (error) {
         console.error("[fulfillment] Metabolic report email failed:", error);

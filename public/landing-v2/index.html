@@ -1793,23 +1793,26 @@ body {
 }
 </style>
 
-<!-- GA4 -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-3YLYBMKY5N"></script>
+<!-- GA4 + Meta Pixel: consent-gated (Phase 0 compliance) -->
+<!-- Scripts are loaded dynamically only after user accepts cookie consent -->
 <script>
-window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}
-gtag('js',new Date());gtag('config','G-3YLYBMKY5N');
+function _cybEnableAnalytics(){
+  if(document.getElementById('cyb-gtag'))return;
+  var g=document.createElement('script');g.id='cyb-gtag';g.async=true;
+  g.src='https://www.googletagmanager.com/gtag/js?id=G-3YLYBMKY5N';
+  document.head.appendChild(g);
+  var gi=document.createElement('script');
+  gi.textContent='window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag("js",new Date());gtag("config","G-3YLYBMKY5N",{anonymize_ip:true});window.gtag=gtag;';
+  document.head.appendChild(gi);
+  var f=document.createElement('script');f.id='cyb-fbq';
+  f.textContent='!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version="2.0";n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,"script","https://connect.facebook.net/en_US/fbevents.js");fbq("init","1295926862451320");fbq("track","PageView");';
+  document.head.appendChild(f);
+}
+(function(){
+  var c=localStorage.getItem('cyb_cookie_consent');
+  if(c==='accepted')_cybEnableAnalytics();
+})();
 </script>
-
-<!-- Meta Pixel -->
-<script>
-!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
-n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
-t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
-document,'script','https://connect.facebook.net/en_US/fbevents.js');
-fbq('init','1295926862451320');fbq('track','PageView');
-</script>
-<noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=1295926862451320&ev=PageView&noscript=1"/></noscript>
 
 </head>
 <body>
@@ -2609,6 +2612,20 @@ window.addEventListener('message',function(e){
     if(iframe) iframe.style.height=e.data.height+'px';
   }
 });
+</script>
+
+<!-- Cookie Consent Banner (Phase 0 compliance) -->
+<div id="cyb-cookie-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9999;background:#141e29;border-top:1px solid rgba(201,168,76,0.2);padding:16px 20px;font-family:var(--sans);text-align:center;">
+  <div style="max-width:700px;margin:0 auto;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:12px;">
+    <p style="color:#ccc;font-size:13px;margin:0;max-width:500px;line-height:1.6;">Folosim cookie-uri pentru a analiza traficul și a îmbunătăți experiența ta. <a href="/confidentialitate" style="color:#C9A84C;text-decoration:underline;">Politica de Confidențialitate</a></p>
+    <div style="display:flex;gap:8px;">
+      <button onclick="localStorage.setItem('cyb_cookie_consent','accepted');document.getElementById('cyb-cookie-banner').style.display='none';_cybEnableAnalytics();" style="padding:8px 20px;background:#C9A84C;color:#0f1923;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">Accept</button>
+      <button onclick="localStorage.setItem('cyb_cookie_consent','rejected');document.getElementById('cyb-cookie-banner').style.display='none';" style="padding:8px 20px;background:transparent;color:#888;border:1px solid #444;border-radius:6px;font-size:13px;cursor:pointer;">Refuz</button>
+    </div>
+  </div>
+</div>
+<script>
+(function(){if(!localStorage.getItem('cyb_cookie_consent')){document.getElementById('cyb-cookie-banner').style.display='block';}})();
 </script>
 
 </body>

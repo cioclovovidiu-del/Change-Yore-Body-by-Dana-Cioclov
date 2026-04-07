@@ -9,23 +9,26 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
-<!-- GA4 -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-3YLYBMKY5N"></script>
+<!-- GA4 + Meta Pixel: consent-gated (Phase 0 compliance) -->
+<!-- Loaded only if user accepted cookies on the parent landing page -->
 <script>
-window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}
-gtag('js',new Date());gtag('config','G-3YLYBMKY5N');
+function _cybEnableAnalytics(){
+  if(document.getElementById('cyb-gtag'))return;
+  var g=document.createElement('script');g.id='cyb-gtag';g.async=true;
+  g.src='https://www.googletagmanager.com/gtag/js?id=G-3YLYBMKY5N';
+  document.head.appendChild(g);
+  var gi=document.createElement('script');
+  gi.textContent='window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag("js",new Date());gtag("config","G-3YLYBMKY5N",{anonymize_ip:true});window.gtag=gtag;';
+  document.head.appendChild(gi);
+  var f=document.createElement('script');f.id='cyb-fbq';
+  f.textContent='!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version="2.0";n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,"script","https://connect.facebook.net/en_US/fbevents.js");fbq("init","1295926862451320");fbq("track","PageView");';
+  document.head.appendChild(f);
+}
+(function(){
+  var c=localStorage.getItem('cyb_cookie_consent');
+  if(c==='accepted')_cybEnableAnalytics();
+})();
 </script>
-
-<!-- Meta Pixel -->
-<script>
-!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
-n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
-t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
-document,'script','https://connect.facebook.net/en_US/fbevents.js');
-fbq('init','1295926862451320');fbq('track','PageView');
-</script>
-<noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=1295926862451320&ev=PageView&noscript=1"/></noscript>
 
 <style>
 :root{--teal:#2AA5A0;--teal-deep:#1A9E9E;--teal-dark:#157575;--teal-glow:#3ECDC6;--gold:#C9A84C;--gold-warm:#D4AF37;--dark:#0F1923;--dark2:#1A2733;--dark3:#243442;--text:rgba(255,255,255,0.55);--white:#F8FAFC;--rose:#E8A0BF;--coral:#D85A30;--green:#48BB78;--red:#E07A6A;--purple:#8B5CF6;--serif:'Cormorant Garamond',Georgia,serif;--sans:'Outfit',system-ui,sans-serif}

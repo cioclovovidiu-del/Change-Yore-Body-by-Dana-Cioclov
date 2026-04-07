@@ -1,6 +1,34 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
-import { emailFrom, emailReplyTo, DANIELA_EMAIL } from "@/lib/email-config";
+import { emailFrom, emailReplyTo, DANIELA_EMAIL, listUnsubscribeHeaders, emailLegalFooterHtml } from "@/lib/email-config";
+
+// ── Phase 0: GDPR consent timestamp logging ─────────────────────────
+// Emits structured log matching architecture's consent_records schema.
+// Will be replaced by DB insert in Phase 1 when user/DB layer exists.
+const CONSENT_TEXT_VERSION = "2026-04-07-v1";
+
+function logConsentRecord(
+  request: Request,
+  consentType: "gdpr" | "marketing" | "terms",
+  email: string,
+  source: string
+) {
+  const ip =
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    request.headers.get("x-real-ip") ||
+    "unknown";
+  console.log(
+    JSON.stringify({
+      event: "CYB_CONSENT_RECORD",
+      consentType,
+      email: email || "unknown",
+      consentedAt: new Date().toISOString(),
+      ipAddress: ip,
+      consentTextVersion: CONSENT_TEXT_VERSION,
+      source,
+    })
+  );
+}
 
 let resend: Resend | null = null;
 if (process.env.RESEND_API_KEY) {
@@ -291,9 +319,7 @@ function buildCompletFollowUpHtml(profile: Record<string, unknown>): string {
       </div>
     </div>
 
-    <p style="text-align:center;color:#444;font-size:11px;margin-top:20px;">
-      Change Your Body by Daniela Cioclov · changeyourbody.ro
-    </p>
+    ${emailLegalFooterHtml()}
   </div>
 </body>
 </html>`;
@@ -320,6 +346,8 @@ export async function POST(request: Request) {
       if (!mini.profile.gdpr) {
         return NextResponse.json({ error: "GDPR consent required" }, { status: 403 });
       }
+      // Phase 0: GDPR consent timestamp log (audit trail)
+      logConsentRecord(request, "gdpr", String(mini.profile.email || ""), "mini");
       const name = escapeHtml(String(mini.profile.name || "Anonim"));
       subject = `Mini CYB — ${name}`;
       html = buildMiniHtml(mini.profile);
@@ -333,6 +361,8 @@ export async function POST(request: Request) {
       if (!complet.profile.gdpr) {
         return NextResponse.json({ error: "GDPR consent required" }, { status: 403 });
       }
+      // Phase 0: GDPR consent timestamp log (audit trail)
+      logConsentRecord(request, "gdpr", String(complet.profile.email || ""), "complet");
       const name = escapeHtml(String(complet.profile.name || "Anonim"));
       subject = `Complet CYB — ${name}`;
       html = buildCompletHtml(complet.profile, complet.ans || {});
@@ -382,6 +412,7 @@ export async function POST(request: Request) {
             to: userEmail,
             subject: userSubject,
             html: buildCompletFollowUpHtml(complet.profile),
+            headers: listUnsubscribeHeaders(),
           });
           if (userErr) {
             console.error("[C9] User follow-up email failed:", userErr);

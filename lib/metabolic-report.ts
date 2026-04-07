@@ -7,6 +7,7 @@ import { calcBMI, calcBMR, calcTDEE } from "./cyb-calc";
 import { buildMultiDayPlan, calcSlotTargets } from "./cyb-recipes";
 import { buildTrainingPlan4Weeks, enrichExercise, buildExerciseVideoUrl } from "./cyb-training";
 import type { TrainingPlan4Weeks, TrainingPlanWeek, Session, ExerciseBlock } from "./cyb-training";
+import { emailLegalFooterHtml } from "./email-config";
 
 export { calcBMI, calcBMR, calcTDEE };
 
@@ -956,9 +957,15 @@ export function buildMetabolicReportHtml(input: ReportInput): string {
       ${reportLink}
     </div>
 
-    <p style="text-align:center;color:#444;font-size:11px;margin-top:20px;">
-      Change Your Body by Daniela Cioclov · changeyourbody.ro
-    </p>
+    <div style="max-width:560px;margin:0 auto;padding:16px 20px 0;">
+      <div style="background:rgba(255,200,50,0.04);border:1px solid rgba(255,200,50,0.12);border-radius:8px;padding:12px 16px;margin-bottom:12px;">
+        <p style="color:#999;font-size:11px;line-height:1.6;margin:0;">
+          <strong style="color:#C9A84C;">⚕ Disclaimer medical:</strong> Acest raport are caracter exclusiv informativ și educațional. Nu constituie și nu înlocuiește consultul medical, diagnosticul sau tratamentul oferit de un medic specialist. Consultați medicul dumneavoastră înainte de a începe orice program de exerciții fizice sau schimbare alimentară.
+        </p>
+      </div>
+    </div>
+
+    ${mode === "email" ? emailLegalFooterHtml() : `<p style="text-align:center;color:#444;font-size:11px;margin-top:20px;">Change Your Body by Daniela Cioclov · changeyourbody.ro</p>`}
   </div>
 </body>
 </html>`;
