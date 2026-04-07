@@ -15,16 +15,12 @@ const resend = process.env.RESEND_API_KEY
   ? new Resend(process.env.RESEND_API_KEY)
   : null;
 
-const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
     provider: "pg",
     schema,
     usePlural: true,
   }),
-  baseURL: SITE_URL,
   secret: process.env.BETTER_AUTH_SECRET,
   emailAndPassword: {
     enabled: true,
