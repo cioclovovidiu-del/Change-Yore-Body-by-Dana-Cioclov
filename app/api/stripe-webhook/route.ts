@@ -9,6 +9,9 @@ import {
   type CustomerProfile,
 } from "@/lib/metabolic-report";
 import { emailFrom, emailReplyTo, DANIELA_EMAIL, listUnsubscribeHeaders, emailLegalFooterHtml } from "@/lib/email-config";
+import { db } from "@/lib/db";
+import { users, verifications } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 
 // ── Stripe init (safe: null if env missing) ─────────────────────────
 let stripe: Stripe | null = null;
@@ -589,6 +592,132 @@ async function triggerFulfillment(
   return deliveryResult;
 }
 
+// ── Phase 1: User account creation on payment ──────────────────────
+
+/**
+ * Ensure a user account exists for the given email.
+ * Returns { userId, isNew }. If user already exists, links stripe_customer_id.
+ */
+async function ensureUserAccount(
+  email: string,
+  name: string,
+  stripeCustomerId: string | null
+): Promise<{ userId: string; isNew: boolean }> {
+  const normalizedEmail = email.toLowerCase();
+
+  // Check if user already exists
+  const existing = await db
+    .select()
+    .from(users)
+    .where(eq(users.email, normalizedEmail))
+    .limit(1);
+
+  if (existing.length > 0) {
+    const user = existing[0];
+    // Link stripe_customer_id if not yet set
+    if (stripeCustomerId && !user.stripeCustomerId) {
+      await db
+        .update(users)
+        .set({ stripeCustomerId, updatedAt: new Date() })
+        .where(eq(users.id, user.id));
+    }
+    return { userId: user.id, isNew: false };
+  }
+
+  // Create new user (without password — set-password flow handles that)
+  const userId = crypto.randomUUID();
+  await db.insert(users).values({
+    id: userId,
+    email: normalizedEmail,
+    name: name || normalizedEmail.split("@")[0],
+    emailVerified: false,
+    role: "client",
+    stripeCustomerId,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  });
+
+  console.log(
+    `[stripe-webhook] User account created: ${normalizedEmail} (${userId})`
+  );
+  return { userId, isNew: true };
+}
+
+/**
+ * Send a "set your password" email to a newly created user.
+ * Uses BetterAuth's verification token format so the standard
+ * resetPassword endpoint can consume it.
+ */
+async function sendSetPasswordEmail(
+  email: string,
+  name: string,
+  userId: string
+): Promise<void> {
+  if (!resend) {
+    console.error("[stripe-webhook] Resend not configured — cannot send set-password email");
+    return;
+  }
+
+  // Generate token in BetterAuth's format: identifier = "reset-password:{token}", value = userId
+  const token = crypto.randomUUID().replace(/-/g, "") + crypto.randomUUID().replace(/-/g, "").slice(0, 8);
+  const expiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000); // 72 hours for first-time setup
+
+  const tokenId = crypto.randomUUID();
+  await db.insert(verifications).values({
+    id: tokenId,
+    identifier: `reset-password:${token}`,
+    value: userId,
+    expiresAt,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  });
+
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://changeyourbody.ro";
+  const setPasswordUrl = `${siteUrl}/set-password?token=${token}`;
+
+  const greeting = name ? `Dragă ${escapeHtml(name)},` : "Bună,";
+
+  const { error } = await resend.emails.send({
+    from: emailFrom(),
+    replyTo: emailReplyTo,
+    to: email,
+    subject: "Activează contul tău — Change Your Body",
+    html: `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#0f1923;font-family:Arial,Helvetica,sans-serif;">
+  <div style="max-width:560px;margin:0 auto;padding:32px 20px;">
+    <div style="text-align:center;margin-bottom:24px;">
+      <h1 style="color:#C9A84C;font-size:24px;margin:0 0 4px;">Change Your Body</h1>
+      <p style="color:#666;font-size:13px;margin:0;">Activare cont</p>
+    </div>
+    <div style="background:#141e29;border-radius:16px;padding:28px 24px;border:1px solid rgba(201,168,76,0.15);">
+      <p style="color:#e0e0e0;font-size:15px;line-height:1.8;margin:0 0 16px;">${greeting}</p>
+      <p style="color:#e0e0e0;font-size:15px;line-height:1.8;margin:0 0 20px;">
+        Contul tău Change Your Body a fost creat cu succes!
+        Apasă pe butonul de mai jos pentru a seta parola și a-ți activa contul.
+      </p>
+      <div style="text-align:center;margin:24px 0;">
+        <a href="${setPasswordUrl}" style="display:inline-block;padding:14px 32px;background:#C9A84C;color:#0f1923;border-radius:10px;text-decoration:none;font-size:15px;font-weight:700;">Activează contul →</a>
+      </div>
+      <p style="color:#888;font-size:13px;line-height:1.6;margin:0;">
+        Linkul este valabil 72 de ore. Dacă ai nevoie de ajutor, scrie-i Danielei pe WhatsApp.
+      </p>
+    </div>
+    ${emailLegalFooterHtml()}
+  </div>
+</body>
+</html>`,
+    headers: listUnsubscribeHeaders(),
+  });
+
+  if (error) {
+    console.error("[stripe-webhook] Set-password email failed:", error);
+  } else {
+    console.log(`[stripe-webhook] Set-password email sent to ${email}`);
+  }
+}
+
 // ── Webhook handler ─────────────────────────────────────────────────
 
 export async function POST(request: Request) {
@@ -762,6 +891,35 @@ export async function POST(request: Request) {
 
       // C3/C5/C6/N9: fulfillment (emails + report + delivery result)
       const deliveryResult = await triggerFulfillment(payload, customerProfile, completAnswers, customDays);
+
+      // Phase 1: Create user account and send set-password email
+      if (payload.customerEmail) {
+        try {
+          const stripeCustomerId =
+            typeof session.customer === "string"
+              ? session.customer
+              : session.customer?.id || null;
+          const { userId, isNew } = await ensureUserAccount(
+            payload.customerEmail,
+            payload.customerName,
+            stripeCustomerId
+          );
+          if (isNew) {
+            await sendSetPasswordEmail(
+              payload.customerEmail,
+              payload.customerName,
+              userId
+            );
+          } else {
+            console.log(
+              `[stripe-webhook] User already exists for ${payload.customerEmail} — skipping set-password email`
+            );
+          }
+        } catch (err) {
+          // NON-FATAL: user creation must not block payment fulfillment
+          console.error("[stripe-webhook] User account creation failed:", err);
+        }
+      }
 
       // C4: Mark as fulfilled in Stripe metadata (persistent idempotency)
       // C5: Include delivery summary in metadata

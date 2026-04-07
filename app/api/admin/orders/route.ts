@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
+import { headers } from "next/headers";
 import Stripe from "stripe";
+import { auth } from "@/lib/auth";
 
 // ── Stripe init ──────────────────────────────────────────────────────
 let stripe: Stripe | null = null;
@@ -9,17 +11,27 @@ if (process.env.STRIPE_SECRET_KEY) {
   });
 }
 
-// ── Auth guard ───────────────────────────────────────────────────────
+// ── Auth guard (dual: session-based + legacy API key) ────────────────
 const ADMIN_API_KEY = process.env.ADMIN_API_KEY || "";
 
-function isAuthorized(request: Request): boolean {
+async function isAuthorized(request: Request): Promise<boolean> {
+  // 1. Session-based auth (admin role)
+  try {
+    const session = await auth.api.getSession({
+      headers: await headers(),
+    });
+    const user = session?.user as { role?: string } | undefined;
+    if (user?.role === "admin") return true;
+  } catch {
+    // Session check failed — fall through to API key
+  }
+
+  // 2. Legacy API key fallback
   if (!ADMIN_API_KEY) return false;
 
-  // Check Authorization header first
   const authHeader = request.headers.get("authorization");
   if (authHeader === `Bearer ${ADMIN_API_KEY}`) return true;
 
-  // Check query param fallback (for quick browser access)
   const url = new URL(request.url);
   const keyParam = url.searchParams.get("key");
   if (keyParam === ADMIN_API_KEY) return true;
@@ -51,16 +63,8 @@ export async function GET(request: Request) {
     );
   }
 
-  // Guard: ADMIN_API_KEY not set
-  if (!ADMIN_API_KEY) {
-    return NextResponse.json(
-      { error: "Admin access not configured" },
-      { status: 503 }
-    );
-  }
-
-  // Auth check
-  if (!isAuthorized(request)) {
+  // Auth check (session-based or legacy API key)
+  if (!(await isAuthorized(request))) {
     return NextResponse.json(
       { error: "Unauthorized" },
       { status: 401 }
