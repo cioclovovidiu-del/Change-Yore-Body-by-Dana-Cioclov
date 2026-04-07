@@ -18,11 +18,12 @@ async function main() {
   const email = process.env.ADMIN_EMAIL;
   const password = process.env.ADMIN_PASSWORD;
   const dbUrl = process.env.DATABASE_URL;
+  // SEED_URL is the server we're talking to. The Origin header MUST match
+  // the target server's BETTER_AUTH_URL. For local dev that's http://localhost:3000.
+  // For production that's https://changeyourbody.ro.
+  // Derive both from the same source to keep them in sync.
   const seedUrl = process.env.SEED_URL || "http://localhost:3000";
-  const origin =
-    process.env.BETTER_AUTH_URL ||
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    seedUrl;
+  const origin = seedUrl;
 
   if (!email || !password) {
     console.error("ADMIN_EMAIL and ADMIN_PASSWORD env vars are required");
