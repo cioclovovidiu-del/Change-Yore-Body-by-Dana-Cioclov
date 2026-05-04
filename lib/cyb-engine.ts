@@ -570,6 +570,10 @@ export function calcHormonalScore(
   if ((mini.age as number) >= 45) score += 15;
   if (mini.moment === 2) score += 20;
   if (mini.moment === 0) score += 10;
+  // D5: qCycle integration — closes hormonal gap for women not on moment=2
+  const cycle = ans.qCycle as number | undefined;
+  if (cycle === 1) score += 15;  // Neregulat
+  if (cycle === 2) score += 20;  // Nu mai am ciclu (menopauză)
   const sleep = ans.q5 || 0;
   if (sleep >= 2) score += 10;
   const stress = ans.q6 || 0;
