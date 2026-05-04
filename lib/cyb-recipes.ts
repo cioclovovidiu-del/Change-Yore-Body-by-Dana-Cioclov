@@ -966,6 +966,67 @@ export function calcSlotTargets(profile: any, ans: any): CalcSlotResult {
     legacy[slotNames[i]] = slotKcal;
   }
 
+  // ── D5 Stage 2: qBreakfast + qLateEating redistribution ────────────
+  // Adapts the plan to real eating habits. Total daily kcal preserved.
+  const qBreakfast = ans.qBreakfast as number | undefined;
+  const qLateEating = ans.qLateEating as number | undefined;
+
+  // Helper to scale a SlotMacros entry by a factor (positive = increase)
+  const scaleSlot = (idx: number, factor: number) => {
+    if (idx >= slotTargets.length) return;
+    const original = slotTargets[idx];
+    slotTargets[idx] = {
+      kcal: Math.round(original.kcal * factor),
+      protein: Math.round(original.protein * factor),
+      fat: Math.round(original.fat * factor),
+      carbs: Math.round(original.carbs * factor),
+    };
+    legacy[slotNames[idx]] = Math.round(legacy[slotNames[idx]] * factor);
+  };
+
+  // qBreakfast: redistribute breakfast calories
+  if (qBreakfast === 0 && slotTargets.length >= 3) {
+    // "Nu iau micul dejun" → zero breakfast, split equally between lunch and dinner
+    const breakfastKcal = legacy.breakfast || 0;
+    if (breakfastKcal > 0) {
+      const half = breakfastKcal / 2;
+      const lunchOriginal = legacy.lunch;
+      const dinnerOriginal = legacy.dinner;
+      // Scale lunch and dinner up proportionally
+      scaleSlot(1, (lunchOriginal + half) / lunchOriginal);
+      scaleSlot(2, (dinnerOriginal + half) / dinnerOriginal);
+      // Zero out breakfast
+      slotTargets[0] = { kcal: 0, protein: 0, fat: 0, carbs: 0 };
+      legacy.breakfast = 0;
+    }
+  } else if (qBreakfast === 1 && slotTargets.length >= 2) {
+    // "Cafea + ceva mic" → 50% breakfast, surplus to lunch
+    const breakfastOriginal = legacy.breakfast;
+    if (breakfastOriginal > 0) {
+      const halfKcal = breakfastOriginal / 2;
+      const lunchOriginal = legacy.lunch;
+      // Scale breakfast down to 50%
+      scaleSlot(0, 0.5);
+      // Scale lunch up by the released kcal
+      scaleSlot(1, (lunchOriginal + halfKcal) / lunchOriginal);
+    }
+  }
+
+  // qLateEating: redistribute dinner calories (independent of breakfast logic)
+  if ((qLateEating === 2 || qLateEating === 3) && slotTargets.length >= 3) {
+    // "Rar" or "Nu mănânc seara târziu" → reduce dinner, shift to lunch
+    const reductionFactor = qLateEating === 3 ? 0.20 : 0.15; // 20% or 15%
+    const dinnerOriginal = legacy.dinner;
+    if (dinnerOriginal > 0) {
+      const reducedKcal = dinnerOriginal * reductionFactor;
+      const lunchOriginal = legacy.lunch;
+      // Scale dinner down
+      scaleSlot(2, 1 - reductionFactor);
+      // Scale lunch up by the released kcal
+      scaleSlot(1, (lunchOriginal + reducedKcal) / lunchOriginal);
+    }
+  }
+
   // Fill remaining slots with 0 for legacy compat
   for (let i = ratios.length; i < slotNames.length; i++) {
     legacy[slotNames[i]] = 0;
